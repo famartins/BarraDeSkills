@@ -8,3 +8,6 @@ buffs/
 # Python
 __pycache__/
 *.pyc
+
+# Icones baixados da wiki (pertencem aos criadores do jogo)
+cache/
