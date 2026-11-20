@@ -39,12 +39,12 @@ goto fim
 :versao_ok
 
 rem --- 3) Dependencias instaladas? Se nao, instala sozinho ---
-%PY% -c "import tkinter, mss, PIL, numpy" >nul 2>nul
+%PY% -c "import tkinter, mss, PIL, numpy, customtkinter" >nul 2>nul
 if not errorlevel 1 goto deps_ok
 echo Instalando as dependencias, so na primeira vez...
 echo.
 %PY% -m pip install -r requirements.txt
-%PY% -c "import tkinter, mss, PIL, numpy" >nul 2>nul
+%PY% -c "import tkinter, mss, PIL, numpy, customtkinter" >nul 2>nul
 if not errorlevel 1 goto deps_ok
 echo.
 echo [ERRO] Nao consegui instalar as dependencias. Veja a mensagem acima.

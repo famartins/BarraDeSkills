@@ -10,8 +10,8 @@ O programa so LE a imagem da tela. Nao mexe na memoria do jogo e nao envia
 cliques nem teclas para ele.
 
 Uso:
-    python skillbar.py              inicia (na primeira vez pede a calibracao)
-    python skillbar.py --calibrar   refaz a calibracao
+    python skillbar.py              inicia (no primeiro uso abre o assistente)
+    python skillbar.py --calibrar   marca os icones manualmente
     python skillbar.py --monitor 2  usa o monitor 2 (1 = principal)
     python skillbar.py --janelas    lista as janelas abertas (programa e titulo)
     python skillbar.py --jogo X.exe barra so aparece com o programa X.exe ativo
@@ -21,9 +21,12 @@ Atalhos (funcionam mesmo com o foco no jogo):
     Ctrl+Alt+F11   abre a janela de configuracoes
     Ctrl+Alt+F12   cadastra um buff (com o buff ativo na tela)
 
-Buffs: os icones dos buffs que voce cadastrar aparecem logo acima da skill escolhida
+Buffs: os icones dos buffs que voce cadastrar aparecem junto da skill escolhida
 e, passando o mouse, mostram nome e tempo restante (cronometro baseado na duracao
-que voce informar).
+que voce informar, reiniciado quando voce usa a skill de novo).
+
+Arquivos: telas.py (telas), wiki.py (dados das vocacoes), localizar.py (achar as
+magias na tela), buffcore.py (reconhecimento e cronometro dos buffs).
 """
 
 import argparse
@@ -32,6 +35,7 @@ import json
 import os
 import sys
 import time
+import unicodedata
 from ctypes import wintypes
 
 if sys.platform != "win32":
@@ -42,22 +46,43 @@ try:
     import tkinter as tk
     from tkinter import messagebox
     import mss
+    import numpy as np
     from PIL import Image, ImageTk
+    import telas
+    import wiki
+    from buffcore import (BuffTracker, CastDetector, buff_time_text, expand_buff_area,
+                          find_template)
 except ImportError as exc:
     print("Faltam bibliotecas:", exc)
-    print("Rode:  pip install -r requirements.txt")
+    print("Rode:  pip install -r requirements.txt   (ou use o iniciar.bat)")
     input("Pressione Enter para sair...")
     sys.exit(1)
 
-# O recurso de buffs precisa do numpy. Sem ele, a barra de skills funciona normalmente.
-try:
-    import numpy as np
-    from buffcore import (BuffTracker, CastDetector, buff_time_text, expand_buff_area,
-                          find_template)
-    HAVE_BUFFS = True
-except ImportError:
-    np = None
-    HAVE_BUFFS = False
+
+def _norm(text):
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    return " ".join(text.lower().split())
+
+
+def match_by_name(buff_name, magias):
+    """Slug da magia cujo nome comeca com (ou contem) o nome do buff, se for unica.
+    magias = {slug: nome}."""
+    n = _norm(buff_name)
+    if len(n) < 3:
+        return None
+    for test in (lambda m: m == n, lambda m: m.startswith(n), lambda m: n in m):
+        hits = [s for s, nome in magias.items() if test(_norm(nome))]
+        if len(hits) == 1:
+            return hits[0]
+    return None
+
+
+def alive(window):
+    """True se a janela existe e nao foi fechada."""
+    try:
+        return window is not None and bool(window.winfo_exists())
+    except Exception:
+        return False
 
 
 # --------------------------------------------------------------------------
@@ -224,6 +249,10 @@ DEFAULTS = {
     "buff_pos": None,          # posicao da janelinha de buffs (None = acima da barra)
     "buff_threshold": 14,      # tolerancia do reconhecimento (menor = mais exato)
     "orientation": "horizontal",  # "horizontal" ou "vertical"
+    "vocacao": "",             # slug da vocacao escolhida no assistente
+    "magias": [],              # slugs das magias, na ordem da barra
+    "sidebar_area": None,      # [x, y, w, h] da barra lateral de skills do jogo
+    "wizard_skipped": False,   # quem ja tinha barra e pulou o assistente
     "buff_zoom": 1.5,         # ampliacao extra dos icones de buff (eles sao pequenos)
 }
 
@@ -260,9 +289,10 @@ def grab_image(sct, box):
 # Calibracao: tela congelada onde voce marca os icones
 # --------------------------------------------------------------------------
 class Calibrator:
-    def __init__(self, root, monitor_index, message=None, single=False):
+    def __init__(self, root, monitor_index, message=None, single=False, click_size=None):
         self.root = root
         self.single = single      # True = marca um unico retangulo
+        self.click_size = click_size  # (w, h): no modo single, um clique marca esse tamanho
         self.message = message
         with mss.mss() as sct:
             mons = sct.monitors
@@ -363,6 +393,11 @@ class Calibrator:
             if self.single:
                 self.rects = []
             self.rects.append((x0, y0, w, h))
+        elif self.single and self.click_size:
+            w, h = self.click_size
+            x = max(0, min(self.width - w, e.x - w // 2))
+            y = max(0, min(self.height - h, e.y - h // 2))
+            self.rects = [(x, y, w, h)]
         elif self.rects and not self.single:
             w, h = self.rects[0][2], self.rects[0][3]
             x = max(0, min(self.width - w, e.x - w // 2))
@@ -402,103 +437,8 @@ class Calibrator:
 
 
 # --------------------------------------------------------------------------
-# Buffs: cadastro (dialogo) e janelinha com tooltip
+# Buffs: janela com os buffs ativos e tooltip
 # --------------------------------------------------------------------------
-class BuffDialog:
-    """Pede nome, duracao e descricao de um buff."""
-
-    def __init__(self, root, icon, buff=None, skills=()):
-        """skills = imagens atuais das skills da barra (para escolher a do buff)."""
-        self.result = None
-        win = self.win = tk.Toplevel(root)
-        win.title("Buff")
-        win.attributes("-topmost", True)
-        win.resizable(False, False)
-        frm = tk.Frame(win, padx=14, pady=12)
-        frm.pack()
-
-        z = 4
-        self.photo = ImageTk.PhotoImage(
-            icon.resize((icon.width * z, icon.height * z), RESAMPLE))
-        tk.Label(frm, image=self.photo).grid(row=0, column=0, rowspan=3, padx=(0, 14))
-
-        tk.Label(frm, text="Nome:").grid(row=0, column=1, sticky="w")
-        self.name = tk.Entry(frm, width=30)
-        self.name.grid(row=0, column=2, pady=2)
-        tk.Label(frm, text="Duracao (segundos):").grid(row=1, column=1, sticky="w")
-        self.dur = tk.Entry(frm, width=30)
-        self.dur.grid(row=1, column=2, pady=2)
-        tk.Label(frm, text="Descricao (opcional):").grid(row=2, column=1, sticky="w")
-        self.desc = tk.Entry(frm, width=30)
-        self.desc.grid(row=2, column=2, pady=2)
-
-        tk.Label(frm, justify="left", fg="#555555",
-                 text="Duracao 0 = sem contagem regressiva (mostra ha quanto tempo esta ativo).",
-                 wraplength=380).grid(row=3, column=0, columnspan=3, sticky="w", pady=(8, 0))
-
-        cur = buff.get("skill") if buff else None
-        self.keep_skill = cur   # usado se nao houver skills para escolher
-        self.skill = tk.IntVar(value=cur if isinstance(cur, int) and 0 <= cur < len(skills) else -1)
-        self.skill_photos = []
-        if skills:
-            box = tk.LabelFrame(frm, text="Mostrar o buff acima de qual skill da barra?",
-                                padx=6, pady=6)
-            box.grid(row=4, column=0, columnspan=3, sticky="we", pady=(10, 0))
-            tk.Radiobutton(box, text="Nenhuma\n(janelinha)", variable=self.skill, value=-1,
-                           indicatoron=0, padx=6, pady=6,
-                           selectcolor="#9be09b").pack(side="left", padx=2, fill="y")
-            for i, img in enumerate(skills):
-                if img.height > 48:
-                    img = img.resize((max(1, round(img.width * 48 / img.height)), 48), RESAMPLE)
-                ph = ImageTk.PhotoImage(img)
-                self.skill_photos.append(ph)
-                tk.Radiobutton(box, image=ph, text=str(i + 1), compound="top",
-                               variable=self.skill, value=i, indicatoron=0, padx=3, pady=3,
-                               selectcolor="#9be09b").pack(side="left", padx=2)
-
-        self.err = tk.Label(frm, fg="#c00000")
-        self.err.grid(row=5, column=0, columnspan=3, sticky="w")
-
-        row = tk.Frame(frm)
-        row.grid(row=6, column=0, columnspan=3, sticky="e", pady=(8, 0))
-        tk.Button(row, text="Cancelar", command=win.destroy).pack(side="right", padx=(6, 0))
-        tk.Button(row, text="Salvar", command=self.save).pack(side="right")
-
-        if buff:
-            self.name.insert(0, buff.get("name", ""))
-            self.dur.insert(0, str(buff.get("duration", 0)))
-            self.desc.insert(0, buff.get("desc", ""))
-        else:
-            self.dur.insert(0, "60")
-        win.bind("<Return>", lambda e: self.save())
-        win.bind("<Escape>", lambda e: win.destroy())
-        self.name.focus_set()
-
-    def save(self):
-        try:
-            duration = float(self.dur.get().replace(",", ".").strip() or 0)
-            if duration < 0:
-                raise ValueError
-        except ValueError:
-            self.err.config(text="Duracao invalida: use um numero de segundos (ex.: 60).")
-            return
-        self.result = {
-            "name": self.name.get().strip() or "Buff",
-            "duration": duration,
-            "desc": self.desc.get().strip(),
-            "skill": (self.skill.get() if self.skill.get() >= 0 else None)
-                     if self.skill_photos else self.keep_skill,
-        }
-        self.win.destroy()
-
-    def run(self):
-        self.win.update_idletasks()
-        self.win.lift()
-        self.win.focus_force()
-        self.win.wait_window()
-        return self.result
-
-
 class BuffWindow:
     """Faixa acima da barra com os buffs ativos. Passe o mouse para ver o tempo.
 
@@ -791,34 +731,35 @@ class SkillBar:
         self.bar_length = 0      # comprimento da barra no seu eixo
         self.cast_detectors = []  # um CastDetector por skill
         self.paused = False
-        self.settings = None
-        self.ct_var = None
+        self.settings = None     # telas.Settings aberta
+        self.wizard = None       # telas.Wizard aberto
         self.drag = None
         self.hk = {}
         self.last_error = None
         self.bar_visible = True
-        self.game_lbl = None
+        self.vocacoes = wiki.load_vocacoes()
 
         # buffs
         self.buffs = []
-        self.tracker = BuffTracker() if HAVE_BUFFS else None
-        self.buff_win = BuffWindow(self) if HAVE_BUFFS else None
-        self.buff_mgr = None
-        self.buff_list = None
+        self.tracker = BuffTracker()
+        self.buff_win = BuffWindow(self)
         self.buff_err = None
         self.load_buffs()
 
     # -- ciclo de vida --
     def start(self):
-        if self.force_calibrate or not self.cfg["regions"]:
-            if not self.calibrate() and not self.cfg["regions"]:
-                print("Nenhuma skill marcada. Saindo.")
-                self.root.destroy()
-                return
-        self.render()
-        self.root.deiconify()
+        if self.force_calibrate:
+            self.calibrate()
+        # assistente: no primeiro uso, ou para quem ainda nao escolheu a vocacao
+        need_wizard = not self.cfg["regions"] or (
+            not self.cfg.get("vocacao") and not self.cfg.get("wizard_skipped"))
+        if self.cfg["regions"]:
+            self.render()
+            self.root.deiconify()
         self.root.update()
         self.apply_window_styles()
+        if need_wizard:
+            self.root.after(100, self.open_wizard)
         self.tick()
         self.poll_hotkeys()
         self.keep_on_top()
@@ -850,11 +791,8 @@ class SkillBar:
         ex = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
         ex = (ex | WS_EX_TRANSPARENT) if on else (ex & ~WS_EX_TRANSPARENT)
         user32.SetWindowLongW(hwnd, GWL_EXSTYLE, ex)
-        if self.ct_var is not None:
-            try:
-                self.ct_var.set(bool(on))
-            except tk.TclError:
-                pass
+        if alive(self.settings):
+            self.settings.ct_switch.select() if on else self.settings.ct_switch.deselect()
         if save:
             save_config(self.cfg)
 
@@ -873,30 +811,26 @@ class SkillBar:
             self.paused = False
         if result:
             self.cfg["regions"] = result
+            self.cfg["magias"] = []   # marcacao manual: nao sabemos o nome das skills
             self.last_size = None
             self.photo = None
+            self.cast_detectors = []
             save_config(self.cfg)
             return True
         return False
 
     def recalibrate(self):
-        if self.settings is not None and self.settings.winfo_exists():
+        """Marcacao manual de cada icone (alternativa ao assistente)."""
+        if alive(self.settings):
             self.settings.destroy()
-        if self.buff_mgr is not None and self.buff_mgr.winfo_exists():
-            self.buff_mgr.destroy()
         if self.buff_win is not None:
             self.buff_win.hide()
         self.calibrate()
-        self.render()
-        self.bar_visible = True
-        self.root.deiconify()
-        self.root.update()
+        self.apply_new_regions()
 
     # -- buffs --
     def load_buffs(self):
         self.buffs = []
-        if not HAVE_BUFFS:
-            return
         for ci, b in enumerate(self.cfg.get("buffs", [])):
             try:
                 img = Image.open(os.path.join(BASE_DIR, b["file"])).convert("RGB")
@@ -949,21 +883,26 @@ class SkillBar:
                 active.append(b)
         self.buff_win.update(active, True, now)
 
-    def pick_rect(self, message):
-        """Congela a tela e deixa marcar um retangulo.
+    def ui_windows(self):
+        """Janelas de configuracao/assistente abertas."""
+        return [w for w in (self.settings, self.wizard) if alive(w)]
+
+    def pick_rect(self, message, click_size=None):
+        """Congela a tela e deixa marcar um retangulo (ou so clicar, com click_size).
         Retorna (retangulo_na_tela, recorte_da_imagem) ou (None, None)."""
-        for w in (self.settings, self.buff_mgr):
-            if w is not None and w.winfo_exists():
-                w.destroy()
         self.paused = True
+        hidden = [w for w in self.ui_windows() if w.winfo_viewable()]
         rect = crop = None
         try:
+            for w in hidden:
+                w.withdraw()
             if self.buff_win is not None:
                 self.buff_win.hide()
             self.root.withdraw()
             self.root.update()
             time.sleep(0.35)
-            cal = Calibrator(self.root, self.cfg["monitor"], message=message, single=True)
+            cal = Calibrator(self.root, self.cfg["monitor"], message=message, single=True,
+                             click_size=click_size)
             result = cal.run()
             if result:
                 x, y, w, h = cal.rects[0]
@@ -972,9 +911,20 @@ class SkillBar:
         finally:
             self.paused = False
             self.bar_visible = True
-            self.root.deiconify()
-            self.root.update_idletasks()
+            if self.cfg["regions"]:
+                self.root.deiconify()
+                self.root.update_idletasks()
+            for w in hidden:
+                if alive(w):
+                    w.deiconify()
         return rect, crop
+
+    def grab(self, rect):
+        x, y, w, h = rect
+        return grab_image(self.sct, {"left": x, "top": y, "width": w, "height": h})
+
+    def save(self):
+        save_config(self.cfg)
 
     def define_buff_area(self, step=""):
         rect, _ = self.pick_rect(
@@ -990,24 +940,18 @@ class SkillBar:
         return False
 
     def add_buff(self):
-        if self.paused:
-            return
-        if not HAVE_BUFFS:
-            messagebox.showinfo(
-                "Buffs", "Para usar os buffs, instale o numpy:\n  pip install -r requirements.txt\n"
-                "e reinicie o programa.", parent=self.root)
+        if self.paused or not self.cfg["regions"]:
             return
         two_steps = not self.cfg.get("buff_area")
         if two_steps and not self.define_buff_area("(1/2) - deixe o buff ATIVO no jogo"):
             return
-        rect, icon = self.pick_rect(
+        _rect, icon = self.pick_rect(
             "ADICIONAR BUFF %s\n"
             "Com o buff ATIVO na tela, arraste um retangulo bem justo sobre o ICONE dele.\n"
             "Enter: confirmar.   Esc: cancelar." % ("(2/2)" if two_steps else ""))
         if icon is None:
             return
-        self.warn_small_area(icon)
-        data = BuffDialog(self.root, icon, skills=self.skill_images()).run()
+        data = telas.BuffEditor(self, icon).run()
         if not data:
             return
         folder = os.path.join(BASE_DIR, "buffs")
@@ -1019,10 +963,18 @@ class SkillBar:
             n += 1
             fname = "buffs/%s_%d.png" % (slug, n)
         icon.save(os.path.join(BASE_DIR, fname))
-        self.cfg["buffs"].append(dict(data, file=fname))
+        self.cfg["buffs"].append(dict(self.with_skill_slug(data), file=fname))
         save_config(self.cfg)
         self.load_buffs()
-        self.open_buff_manager()
+        self.refresh_settings()
+
+    def with_skill_slug(self, data):
+        """Guarda tambem QUAL magia o buff segue, para o vinculo sobreviver se a
+        ordem da barra mudar."""
+        mags = self.cfg.get("magias") or []
+        s = data.get("skill")
+        data["skill_slug"] = mags[s] if isinstance(s, int) and 0 <= s < len(mags) else None
+        return data
 
     def skill_images(self):
         """Imagem atual de cada skill da barra (na ordem da barra)."""
@@ -1034,6 +986,25 @@ class SkillBar:
                 imgs.append(Image.new("RGB", (w, h), "#333333"))
         return imgs
 
+    def skill_slots(self, images=True):
+        """[(nome, imagem, magia_da_wiki_ou_None)] de cada skill, na ordem da barra."""
+        regs = self.cfg["regions"]
+        mags = self.cfg.get("magias") or []
+        voc = wiki.find_vocacao(self.vocacoes, self.cfg.get("vocacao") or "")
+        by = {m["slug"]: m for m in voc["magias"]} if voc else {}
+        known = [by.get(mags[i]) if len(mags) == len(regs) else None for i in range(len(regs))]
+        live = (self.skill_images() if images and not all(known) else [None] * len(regs))
+        out = []
+        voc_slug = self.cfg.get("vocacao") or ""
+        for i, (m, img) in enumerate(zip(known, live)):
+            # icone da wiki quando a magia e conhecida: nitido mesmo com o jogo escondido
+            if images and m is not None and wiki.has_icon(voc_slug, m):
+                img = Image.open(wiki.icon_path(voc_slug, m)).convert("RGB")
+            if images and img is None:
+                img = Image.new("RGB", (44, 44), "#333333")
+            out.append((m["nome"] if m else "Skill %d" % (i + 1), img, m))
+        return out
+
     def scan_area(self, area):
         """Area realmente varrida (amplia sozinho se a marcada for pequena)."""
         iw = max((b["img"].width for b in self.buffs), default=16)
@@ -1041,41 +1012,23 @@ class SkillBar:
         vs = self.sct.monitors[0]
         return expand_buff_area(area, iw, ih, (vs["left"], vs["top"], vs["width"], vs["height"]))
 
-    def area_too_small(self, icon_w, icon_h):
-        area = self.cfg.get("buff_area")
-        return bool(area) and (area[2] < icon_w * 3 or area[3] < icon_h * 2)
-
-    def warn_small_area(self, icon):
-        if self.area_too_small(icon.width, icon.height):
-            a = self.cfg["buff_area"]
-            messagebox.showwarning(
-                "Area dos buffs pequena",
-                "A area dos buffs marcada tem so %dx%d px, quase o tamanho de um icone.\n\n"
-                "Os buffs mudam de lugar na fila conforme aparecem e somem. O programa "
-                "amplia a busca sozinho, mas o mais seguro e marcar a linha inteira.\n\n"
-                "Depois, use Buffs > 'Redefinir area dos buffs' e arraste um retangulo "
-                "cobrindo a LINHA inteira de buffs (do 1o ao ultimo espaco possivel)."
-                % (a[2], a[3]), parent=self.root)
-
-    def edit_buff(self):
-        sel = self.buff_list.curselection() if self.buff_list is not None else ()
-        if not sel:
+    def edit_buff(self, i):
+        if not 0 <= i < len(self.buffs):
             return
-        b = self.buffs[sel[0]]
-        data = BuffDialog(self.root, b["img"], b, skills=self.skill_images()).run()
+        b = self.buffs[i]
+        data = telas.BuffEditor(self, b["img"], b).run()
         if data:
-            self.cfg["buffs"][b["ci"]].update(data)
+            self.cfg["buffs"][b["ci"]].update(self.with_skill_slug(data))
             save_config(self.cfg)
             self.load_buffs()
-            self.refresh_buff_list()
+            self.refresh_settings()
 
-    def remove_buff(self):
-        sel = self.buff_list.curselection() if self.buff_list is not None else ()
-        if not sel:
+    def remove_buff(self, i):
+        if not 0 <= i < len(self.buffs):
             return
-        b = self.buffs[sel[0]]
-        if not messagebox.askyesno("Remover buff", "Remover '%s'?" % b["name"],
-                                   parent=self.buff_mgr):
+        b = self.buffs[i]
+        parent = self.settings if alive(self.settings) else self.root
+        if not messagebox.askyesno("Remover buff", "Remover '%s'?" % b["name"], parent=parent):
             return
         self.cfg["buffs"].pop(b["ci"])
         save_config(self.cfg)
@@ -1086,17 +1039,11 @@ class SkillBar:
         if self.tracker is not None:
             self.tracker.s.pop(b["file"], None)
         self.load_buffs()
-        self.refresh_buff_list()
+        self.refresh_settings()
 
-    def refresh_buff_list(self):
-        if self.buff_list is None or not self.buff_list.winfo_exists():
-            return
-        self.buff_list.delete(0, "end")
-        for b in self.buffs:
-            dur = ("%d s" % b["duration"]) if b["duration"] else "sem contagem"
-            s = b.get("skill")
-            where = ("acima da skill %d" % (s + 1)) if isinstance(s, int) else "janelinha"
-            self.buff_list.insert("end", "%s  (%s, %s)" % (b["name"], dur, where))
+    def refresh_settings(self):
+        if alive(self.settings):
+            self.settings.refresh_buffs()
 
     def reset_buff_pos(self):
         self.cfg["buff_pos"] = None
@@ -1106,66 +1053,7 @@ class SkillBar:
 
     def redefine_area(self):
         if self.define_buff_area():
-            self.open_buff_manager()
-
-    def open_buff_manager(self):
-        if self.paused:
-            return
-        if self.buff_mgr is not None and self.buff_mgr.winfo_exists():
-            self.buff_mgr.deiconify()
-            self.buff_mgr.lift()
-            self.refresh_buff_list()
-            return
-        win = self.buff_mgr = tk.Toplevel(self.root)
-        win.title("Buffs")
-        win.attributes("-topmost", True)
-        win.resizable(False, False)
-        frm = tk.Frame(win, padx=12, pady=10)
-        frm.pack()
-        if not HAVE_BUFFS:
-            tk.Label(frm, justify="left", fg="#c00000",
-                     text="Para usar os buffs, instale o numpy:\n"
-                          "  pip install -r requirements.txt\ne reinicie o programa.").pack()
-            tk.Button(frm, text="Fechar", command=win.destroy).pack(pady=(8, 0))
-            return
-        tk.Label(frm, justify="left", wraplength=360,
-                 text="Enquanto um buff estiver ativo no jogo, ele aparece logo acima da "
-                      "skill escolhida no cadastro (ou numa janelinha, se nenhuma). "
-                      "Passe o mouse para ver o tempo.\n"
-                      "Para cadastrar: deixe o buff ATIVO no jogo e use Adicionar "
-                      "(ou Ctrl+Alt+F12). Para trocar a skill: Editar.").pack(anchor="w")
-        self.buff_list = tk.Listbox(frm, width=52, height=8, exportselection=False)
-        self.buff_list.pack(pady=8, fill="x")
-        area = self.cfg.get("buff_area")
-        if not area:
-            area_txt = "NAO definida (sera pedida ao adicionar o primeiro buff)"
-        else:
-            area_txt = "definida (%dx%d px)" % (area[2], area[3])
-            biggest = max(((b["img"].width, b["img"].height) for b in self.buffs),
-                          default=None)
-            if biggest and self.area_too_small(*biggest):
-                area_txt += (" - pequena; o programa amplia a busca sozinho, mas o ideal "
-                             "e redefinir cobrindo a linha toda de buffs")
-        tk.Label(frm, justify="left", wraplength=360,
-                 text="Area dos buffs: %s" % area_txt).pack(anchor="w")
-        row = tk.Frame(frm)
-        row.pack(fill="x", pady=(8, 0))
-        tk.Button(row, text="Adicionar buff", command=self.add_buff).pack(side="left")
-        tk.Button(row, text="Editar...", command=self.edit_buff).pack(side="left", padx=4)
-        tk.Button(row, text="Remover", command=self.remove_buff).pack(side="left")
-        row2 = tk.Frame(frm)
-        row2.pack(fill="x", pady=(6, 0))
-        tk.Button(row2, text="Redefinir area dos buffs", command=self.redefine_area).pack(side="left")
-        tk.Button(row2, text="Janelinha acima da barra",
-                  command=self.reset_buff_pos).pack(side="left", padx=4)
-        tk.Button(row2, text="Fechar", command=win.destroy).pack(side="right")
-        s = tk.Scale(frm, from_=1.0, to=5.0, resolution=0.1, orient="horizontal",
-                     label="Tamanho dos icones de buff (x vezes o original)", length=360)
-        s.set(self.cfg["buff_zoom"])
-        s.config(command=lambda v: self.cfg.__setitem__("buff_zoom", float(v)))
-        s.bind("<ButtonRelease-1>", lambda e: save_config(self.cfg))
-        s.pack(fill="x", pady=(8, 0), before=row)
-        self.refresh_buff_list()
+            self.refresh_settings()
 
     # -- desenho da barra --
     def render(self):
@@ -1222,7 +1110,7 @@ class SkillBar:
     def detect_casts(self, crops):
         """Percebe quando uma skill e usada (icone escurece) e reinicia o tempo do
         buff ligado a ela, caso ele ja esteja ativo (skill reusada antes de acabar)."""
-        if not HAVE_BUFFS or not self.buffs:
+        if not self.buffs:
             return
         if len(self.cast_detectors) != len(crops):
             self.cast_detectors = [CastDetector() for _ in crops]
@@ -1289,7 +1177,7 @@ class SkillBar:
                 want = True
             if want != self.bar_visible:
                 self.bar_visible = want
-                if want:
+                if want and self.cfg["regions"]:
                     self.root.deiconify()
                     self.root.update_idletasks()
                 else:
@@ -1339,109 +1227,107 @@ class SkillBar:
         self.cfg["zoom"] = round(max(0.5, min(4.0, float(self.cfg["zoom"]) + step)), 1)
         save_config(self.cfg)
 
-    # -- janela de configuracoes --
+    # -- telas (assistente e configuracoes, em telas.py) --
     def open_settings(self):
         if self.paused:
             return
-        if self.settings is not None and self.settings.winfo_exists():
-            self.settings.deiconify()
-            self.settings.lift()
-            self.settings.focus_force()
+        if alive(self.wizard):
+            self.wizard.bring_front()
             return
+        if alive(self.settings):
+            self.settings.bring_front()
+            return
+        self.settings = telas.Settings(self)
 
-        win = self.settings = tk.Toplevel(self.root)
-        win.title("Barra de Skills")
-        win.attributes("-topmost", True)
-        win.resizable(False, False)
-        frm = tk.Frame(win, padx=14, pady=12)
-        frm.pack()
+    def open_wizard(self):
+        if alive(self.settings):
+            self.settings.destroy()
+        if alive(self.wizard):
+            self.wizard.bring_front()
+            return
+        self.wizard = telas.Wizard(self)
 
-        tk.Button(frm, text="Recalibrar (escolher as skills de novo)",
-                  command=self.recalibrate).pack(fill="x", pady=(0, 4))
-        tk.Button(frm, text="Buffs (icones acima da barra)...",
-                  command=self.open_buff_manager).pack(fill="x", pady=(0, 8))
-        self._scale(frm, "Zoom", 0.5, 4.0, 0.1, "zoom")
-        self._scale(frm, "Espaco entre icones (px)", 0, 20, 1, "gap")
-        self._scale(frm, "Atualizacoes por segundo", 5, 60, 1, "fps")
+    def wizard_closed(self, finished):
+        self.wizard = None
+        if not self.cfg["regions"]:
+            print("Nenhuma skill escolhida. Saindo.")
+            self.quit()
 
-        game = tk.LabelFrame(frm, text="Mostrar a barra so quando o jogo estiver ativo",
-                             padx=8, pady=6)
-        game.pack(fill="x", pady=(8, 0))
-        self.game_lbl = tk.Label(game, text=self.game_label_text(), justify="left",
-                                 wraplength=270)
-        self.game_lbl.pack(anchor="w")
-        gb = tk.Frame(game)
-        gb.pack(fill="x", pady=(6, 0))
-        tk.Button(gb, text="Definir janela do jogo (clique nela em 3 s)",
-                  command=lambda: self.capture_game_window(3)).pack(fill="x")
-        tk.Button(gb, text="Mostrar sempre (desativar)",
-                  command=self.clear_game_window).pack(fill="x", pady=(4, 0))
+    def skip_wizard(self):
+        self.cfg["wizard_skipped"] = True
+        save_config(self.cfg)
 
-        self.ct_var = tk.BooleanVar(value=bool(self.cfg["click_through"]))
-        tk.Checkbutton(
-            frm, variable=self.ct_var, justify="left",
-            text="Click-through (cliques atravessam a barra)\n"
-                 "Ctrl+Alt+F10 liga/desliga de qualquer lugar",
-            command=lambda: self.set_click_through(self.ct_var.get()),
-        ).pack(anchor="w", pady=6)
+    def finish_wizard(self, vocacao, magias, regions, orientation):
+        """Aplica o que foi escolhido no assistente."""
+        old = self.cfg.get("magias") or []
+        voc = wiki.find_vocacao(self.vocacoes, vocacao)
+        names = {m["slug"]: m["nome"] for m in voc["magias"]} if voc else {}
+        for b in self.cfg["buffs"]:
+            # mantem cada buff em cima da MESMA magia, mesmo que a ordem tenha mudado
+            slug = b.get("skill_slug")
+            s = b.get("skill")
+            if not slug and isinstance(s, int) and 0 <= s < len(old):
+                slug = old[s]
+            if not slug:
+                # buff de antes do assistente: tenta pelo nome ("IRA" -> "Ira Frenetica")
+                slug = match_by_name(b.get("name", ""), {k: names[k] for k in magias
+                                                          if k in names})
+            if slug:
+                b["skill_slug"] = slug
+                b["skill"] = magias.index(slug) if slug in magias else None
+        self.cfg.update(vocacao=vocacao, magias=magias, regions=regions,
+                        orientation=orientation)
+        save_config(self.cfg)
+        self.load_buffs()
+        self.apply_new_regions()
 
-        row = tk.Frame(frm)
-        row.pack(fill="x", pady=(6, 0))
-        tk.Button(row, text="Fechar", command=win.destroy).pack(side="left")
-        tk.Button(row, text="Sair do programa", command=self.quit).pack(side="right")
+    def apply_new_regions(self):
+        self.last_size = None
+        self.photo = None
+        self.cast_detectors = []
+        self.bar_visible = True
+        if self.cfg["regions"]:
+            self.render()
+            self.root.deiconify()
+            self.root.update_idletasks()
+
+    def set_orientation(self, orientation):
+        self.cfg["orientation"] = "vertical" if orientation == "vertical" else "horizontal"
+        self.last_size = None   # forca remontar a barra
+        save_config(self.cfg)
 
     def game_label_text(self):
         proc = self.cfg.get("game_process", "")
         title = self.cfg.get("game_title", "")
         if proc or title:
-            return "Visivel so com esta janela em primeiro plano:\n%s" % (
-                proc or ("titulo contendo '%s'" % title))
-        return "Desativado: a barra fica sempre visivel."
+            return "Visível só com esta janela em primeiro plano:\n%s" % (
+                proc or ("título contendo '%s'" % title))
+        return "Desativado: a barra fica sempre visível."
 
-    def _set_game_lbl(self, text):
-        try:
-            if self.game_lbl is not None and self.game_lbl.winfo_exists():
-                self.game_lbl.config(text=text)
-                return True
-        except tk.TclError:
-            pass
-        return False
-
-    def capture_game_window(self, n):
+    def capture_game_window(self, n, show):
+        """Conta n segundos e grava qual programa esta em primeiro plano.
+        show(texto) atualiza a tela e devolve False se ela foi fechada."""
         if n > 0:
-            if self._set_game_lbl("Clique agora na janela do jogo... %d" % n):
-                self.root.after(1000, lambda: self.capture_game_window(n - 1))
+            if show("Clique agora na janela do jogo... %d" % n):
+                self.root.after(1000, lambda: self.capture_game_window(n - 1, show))
             return
         hwnd = user32.GetForegroundWindow()
         pid, exe = window_info(hwnd) if hwnd else (0, "")
         if not exe or pid == os.getpid():
-            self._set_game_lbl("Nao consegui detectar. Tente de novo e clique "
-                               "na janela do jogo.")
+            show("Não consegui detectar. Tente de novo e clique na janela do jogo.")
         elif exe.lower() in BROWSERS:
-            self._set_game_lbl("Isso e um navegador (%s). Clique na janela do "
-                               "jogo e tente de novo." % exe)
+            show("Isso é um navegador (%s). Clique na janela do jogo e tente de novo." % exe)
         else:
             self.cfg["game_process"] = exe
             self.cfg["game_title"] = ""
             save_config(self.cfg)
-            self._set_game_lbl(self.game_label_text())
+            show(self.game_label_text())
 
-    def clear_game_window(self):
+    def clear_game_window(self, show):
         self.cfg["game_process"] = ""
         self.cfg["game_title"] = ""
         save_config(self.cfg)
-        self._set_game_lbl(self.game_label_text())
-
-    def _scale(self, parent, label, lo, hi, step, key):
-        s = tk.Scale(parent, from_=lo, to=hi, resolution=step,
-                     orient="horizontal", label=label, length=280)
-        s.set(self.cfg[key])
-        s.config(command=lambda v, k=key: self._on_scale(k, v))
-        s.bind("<ButtonRelease-1>", lambda e: save_config(self.cfg))
-        s.pack(fill="x")
-
-    def _on_scale(self, key, value):
-        self.cfg[key] = float(value) if key == "zoom" else int(float(value))
+        show(self.game_label_text())
 
 
 # --------------------------------------------------------------------------
