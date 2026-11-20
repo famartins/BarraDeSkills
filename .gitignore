@@ -11,3 +11,6 @@ __pycache__/
 
 # Icones baixados da wiki (pertencem aos criadores do jogo)
 cache/
+
+# Registro do iniciar.bat
+diagnostico.txt

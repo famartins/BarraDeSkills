@@ -86,7 +86,7 @@ informada, porque o tooltip do jogo não pode ser copiado.
 
 | Sintoma | Solução |
 |---|---|
-| Nada acontece ao abrir o `iniciar.bat` | Leia a janela preta: ela diz o que falta (Python, extrair o ZIP, dependências). Se a janela nem abrir, botão direito no ZIP > **Propriedades** > marque **Desbloquear**, e extraia de novo |
+| Nada acontece ao abrir o `iniciar.bat` | Leia a janela preta: ela diz o que falta (Python, extrair o ZIP, dependências). Tudo fica registrado em **`diagnostico.txt`**, na pasta do programa: mande esse arquivo numa issue. Se o `diagnostico.txt` nem for criado, o Windows ou o antivírus bloqueou o arquivo: botão direito no ZIP > **Propriedades** > marque **Desbloquear**, extraia de novo e libere a pasta no antivírus |
 | Aviso "O Windows protegeu o computador" | **Mais informações** > **Executar assim mesmo** (o programa não é assinado digitalmente) |
 | Ícones errados depois de mover ou redimensionar o jogo | Configurações > **Trocar vocação/magias** > **Procurar de novo** |
 | O assistente não acha uma magia | Use **Marcar**. Se a magia ainda não foi aprendida ou está bloqueada, o ícone fica diferente |

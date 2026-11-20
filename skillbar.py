@@ -42,6 +42,18 @@ if sys.platform != "win32":
     print("Este programa foi feito para Windows.")
     sys.exit(1)
 
+
+def log_error(text):
+    """Acrescenta um erro ao diagnostico.txt (criado pelo iniciar.bat)."""
+    path = os.environ.get("BARRA_LOG")
+    if not path:
+        return
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(time.strftime("[%H:%M:%S] ") + text.rstrip() + "\n")
+    except OSError:
+        pass
+
 try:
     import tkinter as tk
     from tkinter import messagebox
@@ -53,6 +65,7 @@ try:
     from buffcore import (BuffTracker, CastDetector, buff_time_text, expand_buff_area,
                           find_template)
 except ImportError as exc:
+    log_error("Faltam bibliotecas: %r" % exc)
     print("Faltam bibliotecas:", exc)
     print("Rode:  pip install -r requirements.txt   (ou use o iniciar.bat)")
     input("Pressione Enter para sair...")
@@ -710,6 +723,7 @@ class SkillBar:
 
         self.root = tk.Tk()
         self.root.withdraw()
+        self.root.report_callback_exception = self.on_tk_error
         self.root.title("Barra de Skills")
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
@@ -745,6 +759,12 @@ class SkillBar:
         self.buff_win = BuffWindow(self)
         self.buff_err = None
         self.load_buffs()
+
+    def on_tk_error(self, exc_type, exc, tb):
+        import traceback
+        text = "".join(traceback.format_exception(exc_type, exc, tb))
+        print("Erro:", text)
+        log_error(text)
 
     # -- ciclo de vida --
     def start(self):
@@ -1359,5 +1379,34 @@ def main():
     SkillBar(force_calibrate=args.calibrar, monitor=args.monitor).start()
 
 
+def run():
+    """Roda o programa registrando qualquer erro no diagnostico.txt."""
+    import faulthandler
+    import traceback
+    log = os.environ.get("BARRA_LOG")
+    fh = None
+    if log:
+        try:   # travamentos graves (ex.: falha no Tk) tambem vao para o arquivo
+            fh = open(log, "a", encoding="utf-8")
+            faulthandler.enable(fh)
+        except OSError:
+            fh = None
+    log_error("Iniciando (Python %s)" % sys.version.split()[0])
+    try:
+        main()
+    except SystemExit:
+        raise
+    except BaseException:
+        tb = traceback.format_exc()
+        log_error(tb)
+        print(tb)
+        print("O erro acima tambem foi salvo em diagnostico.txt.")
+        sys.exit(1)
+    finally:
+        if fh is not None:
+            faulthandler.disable()
+            fh.close()
+
+
 if __name__ == "__main__":
-    main()
+    run()
