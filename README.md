@@ -1,139 +1,153 @@
-# Barra de Skills
+# Barra de Skills para Bloodstone
 
-Copia os ícones das skills (a barra lateral do jogo) e monta uma barra horizontal
-sempre visível por cima do jogo. Como é uma cópia da imagem da tela, o cooldown e
-o nível aparecem do mesmo jeito que no jogo.
+Coloca as skills do Bloodstone numa barra horizontal embaixo da tela, para acompanhar os
+cooldowns sem olhar para a lateral. Os buffs ativos (Ira, Vampirismo etc.) aparecem logo
+acima da skill que os gera.
 
-O programa **só lê a imagem da tela**. Não mexe na memória do jogo e não envia
-cliques nem teclas. Você continua usando as skills pelas teclas de atalho normais.
+- **Só lê a imagem da tela.** Não mexe na memória do jogo e não envia cliques nem teclas.
+- O cooldown e o nível aparecem igual ao jogo, porque a barra é uma cópia da imagem.
+- Windows apenas. O jogo precisa estar **em janela** ou **janela sem borda**.
 
-## Instalação (uma vez só)
+> Programas que leem a tela costumam ser tranquilos, mas confira as regras do jogo antes de usar.
 
-1. Instale o Python 3.10 ou mais novo em https://www.python.org/downloads/
-   Na primeira tela do instalador, **marque "Add python.exe to PATH"**.
-2. Nesta página do GitHub, clique no botão verde **Code** > **Download ZIP** e extraia
-   a pasta em algum lugar (por exemplo `C:\SkillBar`).
-3. Abra um terminal dentro da pasta (clique com o botão direito num espaço vazio
-   da pasta e escolha "Abrir no Terminal") e rode:
+## Instalação
+
+**Requisitos:** Windows 10 (versão 2004 ou mais nova) ou Windows 11, e Python 3.10 ou mais novo.
+
+1. **Instale o Python** em <https://www.python.org/downloads/>.
+   Na primeira tela do instalador, marque **"Add python.exe to PATH"**.
+2. **Baixe o programa.** Escolha uma das opções:
+   - **ZIP (mais simples):** no topo desta página, clique em **Code > Download ZIP** e
+     extraia em uma pasta, por exemplo `C:\BarraDeSkills`.
+   - **Git:** `git clone https://github.com/famartins/BarraDeSkills.git`
+3. **Instale as dependências.** Abra um terminal dentro da pasta (botão direito num
+   espaço vazio > **Abrir no Terminal**) e rode:
 
    ```
    pip install -r requirements.txt
    ```
 
-## Como usar
+Para atualizar depois: baixe o ZIP de novo e substitua os arquivos (sua configuração
+fica salva no `skillbar_config.json`, que não vem no ZIP), ou rode `git pull`.
 
-1. Abra o jogo **em modo janela** (ou janela sem borda).
-2. Dê dois cliques em `iniciar.bat` (ou rode `python skillbar.py`).
-3. Na primeira vez abre a **calibração**: a tela congela com um aviso no topo.
-   - Na **1ª skill**, arraste um retângulo sobre o ícone.
-   - Nas demais, só **clique no centro do ícone**. Elas usam o mesmo tamanho.
-   - Marque **na ordem** em que quer ver na barra.
-   - Botão direito ou Backspace desfaz a última. **Enter** conclui. **Esc** cancela.
-4. A barra aparece na parte de baixo da tela. **Arraste com o botão esquerdo** para
-   onde quiser. A posição fica salva.
+## Primeiro uso
 
-## Mostrar a barra só quando o jogo estiver ativo
+1. **Abra o jogo** em janela e dê dois cliques em `iniciar.bat`.
+2. **Calibre as skills.** A tela congela com instruções no topo:
+   - Na 1ª skill, **arraste um retângulo** sobre o ícone.
+   - Nas demais, **clique no centro** do ícone, na ordem em que quer ver na barra.
+   - **Enter** conclui. Botão direito ou Backspace desfaz. **Esc** cancela.
+3. **Posicione a barra** arrastando com o botão esquerdo. A posição fica salva.
+4. **(Recomendado) Defina a janela do jogo**, para a barra sumir quando você trocar de
+   programa: botão direito na barra > **Definir janela do jogo** > clique no jogo em até 3 s.
 
-Por padrão a barra fica sempre visível. Para ela aparecer **só quando a janela do jogo
-estiver em primeiro plano** (e sumir quando você abrir o navegador, por exemplo):
+### Buffs
 
-1. Abra o jogo e inicie a barra.
-2. Botão direito na barra (ou Ctrl+Alt+F11) > **"Definir janela do jogo"**.
-3. Em até 3 segundos, **clique na janela do jogo**. O programa grava qual executável é.
+Faça uma vez para cada buff:
 
-Pronto: ao trocar para outro programa a barra some, e ao voltar para o jogo ela
-reaparece. Se o jogo abrir com outro nome de programa no futuro, é só definir de novo.
+1. Use a skill para o buff ficar **ativo** e aperte **Ctrl+Alt+F12**.
+2. Na primeira vez, marque a **área dos buffs**: um retângulo cobrindo a **linha inteira**
+   onde eles aparecem (ao lado do nível do personagem), não só um ícone.
+3. Arraste um retângulo **justo** sobre o ícone do buff.
+4. Informe o **nome**, a **duração em segundos** e **clique na skill** acima da qual ele deve
+   aparecer. Salve.
 
-Alternativas pelo terminal:
+Para ver o tempo restante, passe o mouse sobre o buff. Para trocar a duração ou a skill,
+use botão direito na barra > **Buffs...** > **Editar...**.
 
-- `python skillbar.py --janelas` lista as janelas abertas com o nome do programa.
-- `python skillbar.py --jogo nome_do_programa.exe` define direto.
-- `python skillbar.py --jogo ""` volta a deixar sempre visível.
+**Limitação:** o tempo é uma contagem do próprio programa, a partir da duração informada,
+porque o tooltip do jogo não pode ser copiado. Se você reusar a skill com o buff ainda
+ativo, a contagem não reinicia.
 
-Observação: a barra só aparece com o jogo **em primeiro plano**. Se o jogo estiver
-visível em um monitor mas você estiver com outro programa selecionado, ela some.
-
-## Buffs acima da barra (Ira, Fúria etc.)
-
-Os ícones de buff que aparecem embaixo das infos do personagem podem ser copiados para
-uma janelinha acima da barra de skills. Cada ícone só aparece enquanto o buff está ativo
-no jogo, e ao passar o mouse sobre ele aparece um tooltip com o nome, a descrição e o
-**tempo restante**.
-
-**Importante sobre o tempo:** o tooltip do jogo só existe quando o mouse está sobre o ícone
-original, então ele não pode ser copiado. O programa faz uma contagem própria: ele percebe o
-momento em que o ícone aparece e conta a partir da **duração que você informar** no cadastro.
-
-Se o programa não souber quando o buff começou (por exemplo, o buff já estava ativo antes de
-você abrir o programa), a contagem começa quando ele o enxergar pela primeira vez.
-Se você usar a skill de novo com o buff ainda ativo, o ícone não some, então a contagem não
-reinicia sozinha. Nesse caso o tempo mostrado pode ficar defasado.
-
-**Como cadastrar (uma vez por buff):**
-
-1. Instale o `numpy` se ainda não tiver: `pip install -r requirements.txt`
-2. Use a skill no jogo para o buff ficar **ativo**.
-3. Aperte **Ctrl+Alt+F12** (ou: botão direito na barra > "Buffs..." > "Adicionar buff").
-4. Na primeira vez, a tela congela duas vezes:
-   - **1/2: área dos buffs.** Arraste um retângulo cobrindo a linha onde os ícones de buff
-     aparecem (do primeiro ao último espaço possível), só um pouco mais alto que um ícone.
-     Isso é feito uma vez só.
-   - **2/2: o ícone.** Arraste um retângulo bem justo sobre o ícone do buff.
-5. Aparece uma janelinha para você informar **nome**, **duração em segundos** e uma
-   descrição opcional. Embaixo aparecem as skills da sua barra: **clique na skill que
-   dá esse buff**. Salve.
-
-Repita para cada buff que quiser.
-
-**Onde o buff aparece:**
-
-- **Ligado a uma skill:** enquanto o buff estiver ativo, o ícone dele aparece **logo
-  acima daquela skill** na barra. Ele acompanha a barra quando você a arrasta. O espaço
-  em volta é transparente, então não cobre o jogo.
-- **Sem skill ("Nenhuma"):** fica na janelinha acima da barra, como antes, e dá para
-  arrastá-la. Se houver buffs ligados a skills ativos ao mesmo tempo, os sem skill vão
-  para a direita da barra.
-
-Para ligar um buff que você já cadastrou a uma skill: botão direito na barra > "Buffs..." >
-selecione o buff > **Editar...** > clique na skill > Salvar.
-
-**Área dos buffs:** ela precisa cobrir a **linha inteira** de buffs, não só um ícone. Os
-buffs trocam de posição na fila conforme aparecem e somem, e fora da área eles não são
-reconhecidos. Se a área estiver pequena demais (só um ícone), o programa amplia a busca
-sozinho para os lados, mas o mais seguro é usar "Buffs..." > "Redefinir área dos buffs".
-
-**Tamanho:** os ícones de buff do jogo são bem pequenos, então na barra eles aparecem
-ampliados (1,5× por padrão, um pouco menores que as skills). Ajuste em "Buffs..." > "Tamanho dos ícones de buff".
-
-Dicas:
-
-- Marque o retângulo do ícone o mais justo possível. O reconhecimento compara os pixels.
-- Se mudar o tamanho da janela do jogo ou da interface, cadastre os buffs de novo.
-- Se um buff não for reconhecido ou aparecer o ícone errado, me diga qual foi.
-
-## Controles
+## Atalhos
 
 | Ação | Como |
 |---|---|
 | Mover a barra | Arrastar com o botão esquerdo |
-| Abrir configurações (zoom, espaço, FPS, recalibrar, sair) | Botão direito na barra, ou **Ctrl+Alt+F11** |
-| Click-through (cliques atravessam a barra) | **Ctrl+Alt+F10** liga e desliga |
-| Cadastrar um buff (com o buff ativo no jogo) | **Ctrl+Alt+F12** |
-| Refazer a calibração | Configurações > Recalibrar, ou `python skillbar.py --calibrar` |
+| Zoom da barra | Roda do mouse sobre a barra |
+| Configurações (zoom, espaço, FPS, buffs, recalibrar, sair) | Botão direito na barra ou **Ctrl+Alt+F11** |
+| Click-through (cliques atravessam a barra) | **Ctrl+Alt+F10** |
+| Cadastrar buff | **Ctrl+Alt+F12** |
 
-## Dicas e problemas comuns
+## Problemas comuns
 
-- **Mudou ou moveu a janela do jogo?** Os ícones são lidos de posições fixas da tela.
-  Se a janela mudar de lugar ou de tamanho, refaça a calibração.
-- **Jogo em tela cheia exclusiva:** a barra não aparece por cima. Use janela ou janela
-  sem borda.
-- **Mais de um monitor:** a calibração usa o monitor 1 (principal). Se o jogo estiver
-  em outro, rode `python skillbar.py --monitor 2 --calibrar`.
-- **A barra aparece borrada ou deslocada:** me diga a escala de exibição do Windows
-  (Configurações > Sistema > Vídeo) e a resolução do monitor.
-- **Quer deixar a barra mais "invisível" no clique:** ative o click-through. Para voltar,
-  use Ctrl+Alt+F10.
-- As configurações ficam em `skillbar_config.json`, na mesma pasta. Para voltar ao
-  padrão, apague esse arquivo.
-- Por ler a tela, esse tipo de programa costuma ser seguro, mas as regras de cada jogo
-  valem mais do que qualquer expectativa minha. Vale conferir as do Bloodstone.
+| Sintoma | Solução |
+|---|---|
+| Ícones errados depois de mover ou redimensionar o jogo | Configurações > **Recalibrar** |
+| A barra não aparece por cima do jogo | Use modo janela ou janela sem borda, não tela cheia exclusiva |
+| O jogo está no 2º monitor | `python skillbar.py --monitor 2 --calibrar` |
+| A barra some mesmo com o jogo aberto | O jogo precisa estar em primeiro plano. Ou use **Mostrar sempre** nas configurações |
+| O buff não aparece | Redefina a área dos buffs cobrindo a linha toda (Buffs... > **Redefinir área**) |
+| Quero começar do zero | Apague o `skillbar_config.json` e a pasta `buffs` |
+
+Achou um bug? Abra uma [issue](https://github.com/famartins/BarraDeSkills/issues) com um
+print da tela e o que aparece na janela preta do terminal.
+
+---
+
+## Detalhes técnicos
+
+### Como funciona
+
+- **Captura:** a cada quadro (padrão 30 FPS, ajustável), o programa captura com
+  [`mss`](https://github.com/BoboTiG/python-mss) o retângulo que engloba as skills
+  calibradas. Depois recorta cada ícone e monta uma faixa horizontal com Pillow. Com
+  zoom, a ampliação usa *nearest neighbor* para manter o pixel art nítido.
+- **Janela sobreposta:** é uma janela Tkinter sem borda, `topmost`, com os estilos Win32
+  `WS_EX_NOACTIVATE` (não rouba o foco do jogo), `WS_EX_TOOLWINDOW` (não aparece na
+  barra de tarefas) e `WS_EX_LAYERED`. O click-through liga o `WS_EX_TRANSPARENT`.
+- **Sem eco na captura:** `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)` impede que
+  a própria barra apareça nas capturas, mesmo sobreposta às skills originais.
+- **Visibilidade:** a cada 150 ms o programa compara o executável da janela em primeiro
+  plano (`GetForegroundWindow` + `QueryFullProcessImageNameW`) com o configurado.
+- **Reconhecimento de buffs** (`buffcore.py`, numpy): 10× por segundo, captura a área
+  dos buffs e procura cada ícone cadastrado em duas etapas. A busca grossa compara 1 a
+  cada 3 pixels em todas as posições, com `sliding_window_view`. A confirmação compara o
+  ícone inteiro nos 12 melhores candidatos. O buff é aceito se o erro absoluto médio por
+  canal for ≤ `buff_threshold` (padrão 14, numa escala de 0 a 255). Se a área marcada for
+  pequena demais, a busca é ampliada para os lados automaticamente.
+- **Cronômetro** (`BuffTracker`): o buff começa a contar quando aparece. Ele continua
+  "ativo" por 1 s depois de sumir, para não piscar se algo cobrir o ícone. Se o jogo sai
+  de foco, a contagem é congelada e retomada quando o jogo volta.
+- **Buffs acima das skills:** é uma segunda janela sobreposta, alinhada à barra. O fundo
+  usa uma *color key* (`LWA_COLORKEY`, cor `#ff00fe`), então só os ícones são visíveis e
+  os cliques atravessam o resto.
+
+### Arquivos
+
+| Arquivo | Conteúdo |
+|---|---|
+| `skillbar.py` | Programa principal: calibração, barra, janela de buffs, configurações, atalhos |
+| `buffcore.py` | Lógica de buffs sem dependência de Windows: busca de ícone, cronômetro, textos |
+| `iniciar.bat` | Atalho para `python skillbar.py` |
+| `requirements.txt` | `mss`, `Pillow`, `numpy` |
+| `skillbar_config.json` | Criado no 1º uso. Configuração local, ignorada pelo git |
+| `buffs/` | Criada ao cadastrar buffs. Ícones `.png` de referência, ignorada pelo git |
+
+### Linha de comando
+
+```
+python skillbar.py                 inicia (calibra na primeira vez)
+python skillbar.py --calibrar      refaz a calibração
+python skillbar.py --monitor 2     usa o monitor 2 na calibração
+python skillbar.py --janelas       lista as janelas abertas (executável e título)
+python skillbar.py --jogo X.exe    só mostra a barra com X.exe em primeiro plano ("" desativa)
+```
+
+### Configuração (`skillbar_config.json`)
+
+| Chave | Padrão | Descrição |
+|---|---|---|
+| `regions` | `[]` | `[x, y, largura, altura]` de cada skill, em pixels da tela |
+| `zoom` / `gap` / `fps` | `1.0` / `4` / `30` | Ampliação, espaço entre ícones e atualizações por segundo |
+| `pos` | automático | Posição `[x, y]` da barra |
+| `click_through` | `false` | Cliques atravessam a barra |
+| `exclude_from_capture` | `true` | A barra não aparece em capturas de tela |
+| `game_process` / `game_title` | `""` | Executável ou trecho do título da janela do jogo |
+| `buffs` | `[]` | `{name, duration, desc, file, skill}`. `skill` é o índice na barra (0 = 1ª) ou `null` |
+| `buff_area` | `null` | `[x, y, largura, altura]` da linha de buffs no jogo |
+| `buff_zoom` | `1.5` | Ampliação extra dos ícones de buff |
+| `buff_threshold` | `14` | Tolerância do reconhecimento (menor = mais exato) |
+
+O programa ativa *DPI awareness* por monitor, então as coordenadas são pixels reais
+mesmo com escala do Windows acima de 100%.
