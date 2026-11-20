@@ -52,7 +52,8 @@ except ImportError as exc:
 # O recurso de buffs precisa do numpy. Sem ele, a barra de skills funciona normalmente.
 try:
     import numpy as np
-    from buffcore import BuffTracker, buff_time_text, find_template
+    from buffcore import (BuffTracker, CastDetector, buff_time_text, expand_buff_area,
+                          find_template)
     HAVE_BUFFS = True
 except ImportError:
     np = None
@@ -222,6 +223,7 @@ DEFAULTS = {
     "buff_area": None,         # [x, y, w, h] onde os icones de buff aparecem no jogo
     "buff_pos": None,          # posicao da janelinha de buffs (None = acima da barra)
     "buff_threshold": 14,      # tolerancia do reconhecimento (menor = mais exato)
+    "orientation": "horizontal",  # "horizontal" ou "vertical"
     "buff_zoom": 1.5,         # ampliacao extra dos icones de buff (eles sao pequenos)
 }
 
@@ -567,7 +569,7 @@ class BuffWindow:
         cfg = self.app.cfg
         key = (tuple((b["file"], b.get("skill")) for b in active), float(cfg["zoom"]),
                float(cfg["buff_zoom"]), int(cfg["gap"]), tuple(self.app.slot_centers),
-               self.app.bar_width)
+               self.app.bar_length, self.vertical())
         if key != self.key:
             self.rebuild(active, key)
         self.show()
@@ -576,8 +578,14 @@ class BuffWindow:
         if self.hover is not None:
             self.refresh_tip(now)
 
+    def vertical(self):
+        return self.app.cfg.get("orientation") == "vertical"
+
     def rebuild(self, active, key):
+        """Monta a faixa. Trabalha num eixo "principal" (ao longo da barra: x na
+        horizontal, y na vertical) e num eixo "cruzado" (para fora da barra)."""
         cfg = self.app.cfg
+        vert = self.vertical()
         gap = int(cfg["gap"])
         pad = max(1, round(2 * float(cfg["zoom"])))   # moldura escura em volta de cada icone
         z = float(cfg["zoom"]) * float(cfg["buff_zoom"])
@@ -589,6 +597,9 @@ class BuffWindow:
             scaled.append((b["img"].resize((sw, sh), RESAMPLE) if (sw, sh) != (w, h)
                            else b["img"], b))
 
+        def main_len(icon):
+            return (icon.height if vert else icon.width) + 2 * pad
+
         groups, free = {}, []
         for icon, b in scaled:
             s = b.get("skill")
@@ -598,35 +609,37 @@ class BuffWindow:
                 free.append((icon, b))
         self.linked = bool(groups)
 
-        place = []                           # (x relativo a barra, icone, buff)
+        place = []                           # (posicao no eixo principal, icone, buff)
         if self.linked:
             for s in sorted(groups):
                 items = groups[s]
-                tw = sum(i.width + 2 * pad for i, _ in items) + gap * (len(items) - 1)
-                x = round(centers[s] - tw / 2)
+                tl = sum(main_len(i) for i, _ in items) + gap * (len(items) - 1)
+                m = round(centers[s] - tl / 2)
                 for icon, b in items:
-                    place.append((x, icon, b))
-                    x += icon.width + 2 * pad + gap
-            x = self.app.bar_width + gap     # buffs sem skill: a direita da barra
+                    place.append((m, icon, b))
+                    m += main_len(icon) + gap
+            m = self.app.bar_length + gap    # buffs sem skill: depois do fim da barra
         else:
-            x = 0
+            m = 0
         for icon, b in free:
-            place.append((x, icon, b))
-            x += icon.width + 2 * pad + gap
+            place.append((m, icon, b))
+            m += main_len(icon) + gap
 
-        min_x = min(p[0] for p in place)
-        total_w = max(p[0] + p[1].width + 2 * pad for p in place) - min_x
-        total_h = max(i.height for i, _ in scaled) + 2 * pad
-        strip = Image.new("RGB", (total_w, total_h), KEY_COLOR if self.linked else cfg["bg"])
+        min_m = min(p[0] for p in place)
+        total_main = max(p[0] + main_len(p[1]) for p in place) - min_m
+        total_cross = max((i.width if vert else i.height) for i, _ in scaled) + 2 * pad
+        size = (total_cross, total_main) if vert else (total_main, total_cross)
+        strip = Image.new("RGB", size, KEY_COLOR if self.linked else cfg["bg"])
         self.slots = []
-        for x, icon, b in place:
-            x -= min_x
-            cell_w, cell_h = icon.width + 2 * pad, icon.height + 2 * pad
-            y = total_h - cell_h             # encostado embaixo (perto da barra)
-            strip.paste(cfg["bg"], (x, y, x + cell_w, y + cell_h))
+        for m, icon, b in place:
+            m -= min_m
+            cw, ch = icon.width + 2 * pad, icon.height + 2 * pad
+            # encostado no lado da barra: embaixo (horizontal) ou a direita (vertical)
+            x, y = (total_cross - cw, m) if vert else (m, total_cross - ch)
+            strip.paste(cfg["bg"], (x, y, x + cw, y + ch))
             strip.paste(icon, (x + pad, y + pad))
-            self.slots.append((x, x + cell_w, b))
-        self.x_off = min_x
+            self.slots.append((m, m + main_len(icon), b))
+        self.x_off = min_m
         self.photo = ImageTk.PhotoImage(strip)
         self.label.configure(image=self.photo)
         self.size = strip.size
@@ -638,13 +651,20 @@ class BuffWindow:
         w, h = self.size
         if w <= 0:
             return
+        root = self.app.root
+        vs = self.app.sct.monitors[0]
         pos = self.app.cfg.get("buff_pos")
         if pos and not self.linked:
             x, y = pos
+        elif self.vertical():
+            # a esquerda da barra; se nao couber na tela, a direita
+            x = root.winfo_x() - w - 2
+            if x < vs["left"]:
+                x = root.winfo_x() + root.winfo_width() + 2
+            y = root.winfo_y() + self.x_off
         else:
-            x = self.app.root.winfo_x() + self.x_off
-            y = self.app.root.winfo_y() - h - (2 if self.linked else 6)
-        vs = self.app.sct.monitors[0]
+            x = root.winfo_x() + self.x_off
+            y = root.winfo_y() - h - (2 if self.linked else 6)
         x = max(vs["left"], min(x, vs["left"] + vs["width"] - w))
         y = max(vs["top"], min(y, vs["top"] + vs["height"] - h))
         self.win.geometry("%dx%d+%d+%d" % (w, h, x, y))
@@ -667,15 +687,15 @@ class BuffWindow:
             save_config(self.app.cfg)
 
     # -- tooltip --
-    def slot_at(self, x):
-        for i, (x0, x1, _b) in enumerate(self.slots):
-            if x0 <= x < x1:
+    def slot_at(self, m):
+        for i, (m0, m1, _b) in enumerate(self.slots):
+            if m0 <= m < m1:
                 return i
         return None
 
     def on_motion(self, e):
         if not self.drag:
-            self.set_hover(self.slot_at(e.x))
+            self.set_hover(self.slot_at(e.y if self.vertical() else e.x))
 
     def set_hover(self, idx):
         self.hover = idx
@@ -718,11 +738,17 @@ class BuffWindow:
             self.tip_desc.config(text=b["desc"])
             self.tip_desc.pack(anchor="w", before=self.tip_time)
         self.tip.update_idletasks()
-        th = self.tip.winfo_reqheight()
-        x = self.win.winfo_x() + x0
-        y = self.win.winfo_y() - th - 6
-        if y < 0:
-            y = self.win.winfo_y() + self.size[1] + 6
+        tw, th = self.tip.winfo_reqwidth(), self.tip.winfo_reqheight()
+        if self.vertical():
+            x = self.win.winfo_x() - tw - 6
+            if x < 0:
+                x = self.win.winfo_x() + self.size[0] + 6
+            y = self.win.winfo_y() + x0
+        else:
+            x = self.win.winfo_x() + x0
+            y = self.win.winfo_y() - th - 6
+            if y < 0:
+                y = self.win.winfo_y() + self.size[1] + 6
         self.tip.geometry("+%d+%d" % (x, y))
         self.tip.deiconify()
         if not self.tip_styled:
@@ -761,8 +787,9 @@ class SkillBar:
         self.sct = mss.mss()
         self.photo = None
         self.last_size = None
-        self.slot_centers = []   # centro (x) de cada skill, em pixels da barra
-        self.bar_width = 0
+        self.slot_centers = []   # centro de cada skill no eixo da barra, em pixels
+        self.bar_length = 0      # comprimento da barra no seu eixo
+        self.cast_detectors = []  # um CastDetector por skill
         self.paused = False
         self.settings = None
         self.ct_var = None
@@ -881,6 +908,7 @@ class SkillBar:
                 "duration": float(b.get("duration", 0) or 0),
                 "desc": b.get("desc", ""),
                 "skill": b.get("skill"),
+                "restart_on_cast": b.get("restart_on_cast", True),
                 "file": b["file"],
                 "img": img,
                 "arr": np.asarray(img),
@@ -951,9 +979,10 @@ class SkillBar:
     def define_buff_area(self, step=""):
         rect, _ = self.pick_rect(
             "AREA DOS BUFFS %s\n"
-            "Arraste um retangulo cobrindo a LINHA onde os icones de buff aparecem no jogo\n"
-            "(ao lado do nivel do personagem), do 1o ate o ultimo espaco possivel,\n"
-            "so um pouco mais alto que um icone.   Enter: confirmar.   Esc: cancelar." % step)
+            "Arraste um retangulo cobrindo TODAS AS LINHAS onde os icones de buff podem\n"
+            "aparecer (ao lado do nivel do personagem), do 1o ate o ultimo espaco possivel.\n"
+            "Com muitos buffs ativos a fila quebra para a 2a/3a linha: inclua-as tambem.\n"
+            "Enter: confirmar.   Esc: cancelar." % step)
         if rect:
             self.cfg["buff_area"] = rect
             save_config(self.cfg)
@@ -1006,24 +1035,15 @@ class SkillBar:
         return imgs
 
     def scan_area(self, area):
-        """Area realmente varrida. Se a marcada for pequena demais (so um icone),
-        amplia sozinho para os lados, cobrindo a fila de buffs."""
-        x, y, w, h = area
+        """Area realmente varrida (amplia sozinho se a marcada for pequena)."""
         iw = max((b["img"].width for b in self.buffs), default=16)
         ih = max((b["img"].height for b in self.buffs), default=16)
-        if not self.area_too_small(iw, ih):
-            return x, y, w, h
-        x, w = x - iw * 8, w + iw * 16
-        y, h = y - 6, max(h, ih) + 12
         vs = self.sct.monitors[0]
-        x0, y0 = max(vs["left"], x), max(vs["top"], y)
-        x1 = min(vs["left"] + vs["width"], x + w)
-        y1 = min(vs["top"] + vs["height"], y + h)
-        return x0, y0, x1 - x0, y1 - y0
+        return expand_buff_area(area, iw, ih, (vs["left"], vs["top"], vs["width"], vs["height"]))
 
     def area_too_small(self, icon_w, icon_h):
         area = self.cfg.get("buff_area")
-        return bool(area) and (area[2] < icon_w * 3 or area[3] < icon_h)
+        return bool(area) and (area[2] < icon_w * 3 or area[3] < icon_h * 2)
 
     def warn_small_area(self, icon):
         if self.area_too_small(icon.width, icon.height):
@@ -1162,14 +1182,21 @@ class SkillBar:
                                      "width": right - left, "height": bottom - top})
         crops = [area.crop((x - left, y - top, x - left + w, y - top + h))
                  for x, y, w, h in regs]
+        self.detect_casts(crops)
 
-        total_w = sum(c.width for c in crops) + gap * (len(crops) + 1)
-        total_h = max(c.height for c in crops) + gap * 2
+        vert = self.cfg.get("orientation") == "vertical"
+        mains = [c.height if vert else c.width for c in crops]   # tamanho ao longo da barra
+        total_main = sum(mains) + gap * (len(crops) + 1)
+        total_cross = max((c.width if vert else c.height) for c in crops) + gap * 2
+        total_w, total_h = (total_cross, total_main) if vert else (total_main, total_cross)
         strip = Image.new("RGB", (total_w, total_h), self.cfg["bg"])
-        x = gap
-        for c in crops:
-            strip.paste(c, (x, (total_h - c.height) // 2))
-            x += c.width + gap
+        m = gap
+        for c, ml in zip(crops, mains):
+            if vert:
+                strip.paste(c, ((total_w - c.width) // 2, m))
+            else:
+                strip.paste(c, (m, (total_h - c.height) // 2))
+            m += ml + gap
 
         zoom = float(self.cfg["zoom"])
         if abs(zoom - 1.0) > 0.01:
@@ -1183,14 +1210,30 @@ class SkillBar:
             self.label.configure(image=self.photo)
             self.last_size = strip.size
             self.place_window(*strip.size)
-            # onde cada skill ficou na barra (para os buffs ligados a ela)
-            k = strip.width / total_w
-            centers, cx = [], gap
-            for c in crops:
-                centers.append(round((cx + c.width / 2) * k))
-                cx += c.width + gap
+            # onde cada skill ficou na barra, no eixo da barra (para os buffs)
+            k = (strip.height / total_h) if vert else (strip.width / total_w)
+            centers, m = [], gap
+            for ml in mains:
+                centers.append(round((m + ml / 2) * k))
+                m += ml + gap
             self.slot_centers = centers
-            self.bar_width = strip.width
+            self.bar_length = strip.height if vert else strip.width
+
+    def detect_casts(self, crops):
+        """Percebe quando uma skill e usada (icone escurece) e reinicia o tempo do
+        buff ligado a ela, caso ele ja esteja ativo (skill reusada antes de acabar)."""
+        if not HAVE_BUFFS or not self.buffs:
+            return
+        if len(self.cast_detectors) != len(crops):
+            self.cast_detectors = [CastDetector() for _ in crops]
+        now = time.monotonic()
+        for i, (c, det) in enumerate(zip(crops, self.cast_detectors)):
+            if not det.update(np.asarray(c).mean()):
+                continue
+            for b in self.buffs:
+                if (b.get("skill") == i and b.get("restart_on_cast", True)
+                        and self.tracker.active(b["file"], now)):
+                    self.tracker.restart(b["file"], now)
 
     def place_window(self, w, h):
         mons = self.sct.monitors

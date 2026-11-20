@@ -47,6 +47,58 @@ def find_template(area, tpl, threshold=14.0):
     return None
 
 
+def expand_buff_area(area, iw, ih, screen):
+    """Area de busca dos buffs. Se a area marcada for estreita (menos de 3 icones)
+    amplia para os lados; se for baixa (menos de 2 icones) amplia para baixo,
+    cobrindo 3 linhas, porque com muitos buffs ativos a fila quebra de linha.
+    `screen` = (left, top, width, height) da area de trabalho virtual."""
+    x, y, w, h = area
+    if w < iw * 3:
+        x, w = x - iw * 8, w + iw * 16
+    if h < ih * 2:
+        y, h = y - 6, ih * 3 + 6 * 2 + 12   # 3 linhas + espacamento + folga
+    sl, st, sw, sh = screen
+    x0, y0 = max(sl, x), max(st, y)
+    x1, y1 = min(sl + sw, x + w), min(st + sh, y + h)
+    return x0, y0, max(0, x1 - x0), max(0, y1 - y0)
+
+
+class CastDetector:
+    """Percebe quando uma skill e usada, olhando o brilho medio do icone dela.
+
+    No Bloodstone o icone escurece quando a skill entra em recarga e volta ao
+    normal quando ela fica pronta. Entao "skill usada" = queda BRUSCA de brilho
+    (em poucos quadros) para abaixo de `drop` x o brilho normal. Depois disso,
+    nao dispara de novo ate o brilho voltar a `recover` x o normal.
+    """
+
+    def __init__(self, drop=0.75, recover=0.9, window=3):
+        self.drop = drop
+        self.recover = recover
+        self.window = window
+        self.base = None      # brilho com a skill pronta
+        self.recent = []      # ultimos quadros, para exigir uma queda brusca
+        self.cooling = False
+
+    def update(self, brightness):
+        """Recebe o brilho do quadro atual. Retorna True se a skill acabou de ser usada."""
+        b = float(brightness)
+        fired = False
+        if self.base is None:
+            self.base = b
+        elif self.cooling:
+            if b >= self.base * self.recover:
+                self.cooling = False
+        elif b < self.base * self.drop and b < max(self.recent or [b]) * self.drop:
+            self.cooling = True
+            fired = True
+        else:
+            # acompanha a iluminacao normal: sobe rapido, desce devagar
+            self.base += (b - self.base) * (0.3 if b > self.base else 0.02)
+        self.recent = (self.recent + [b])[-self.window:]
+        return fired
+
+
 def fmt_time(seconds):
     s = max(0, int(seconds))
     return "%dm %ds" % (s // 60, s % 60)
@@ -94,6 +146,12 @@ class BuffTracker:
                 st["since"] = now  # sumiu de verdade e voltou: foi usado de novo
         st["last"] = now
         st["frozen"] = False
+
+    def restart(self, key, now):
+        """A skill do buff foi usada de novo: o cronometro volta ao inicio."""
+        st = self.s.get(key)
+        if st is not None and st["since"] is not None:
+            st["since"] = now
 
     def active(self, key, now):
         st = self.s.get(key)
