@@ -17,15 +17,14 @@ acima da skill que os gera.
 1. **Instale o Python** em <https://www.python.org/downloads/>.
    Na primeira tela do instalador, marque **"Add python.exe to PATH"**.
 2. **Baixe o programa.** Escolha uma das opções:
-   - **ZIP (mais simples):** no topo desta página, clique em **Code > Download ZIP** e
-     extraia em uma pasta, por exemplo `C:\BarraDeSkills`.
+   - **ZIP (mais simples):** no topo desta página, clique em **Code > Download ZIP**.
+     Depois, botão direito no ZIP > **Extrair tudo...**, para uma pasta como
+     `C:\BarraDeSkills`. Não rode o programa de dentro do ZIP.
    - **Git:** `git clone https://github.com/famartins/BarraDeSkills.git`
-3. **Instale as dependências.** Abra um terminal dentro da pasta (botão direito num
-   espaço vazio > **Abrir no Terminal**) e rode:
+3. **Dê dois cliques em `iniciar.bat`.** Na primeira vez, ele instala as dependências
+   sozinho. Se faltar algo, a janela preta diz o que é e como resolver.
 
-   ```
-   pip install -r requirements.txt
-   ```
+   Para instalar manualmente: `pip install -r requirements.txt`
 
 Para atualizar depois: baixe o ZIP de novo e substitua os arquivos (sua configuração
 fica salva no `skillbar_config.json`, que não vem no ZIP), ou rode `git pull`.
@@ -73,6 +72,8 @@ ativo, a contagem não reinicia.
 
 | Sintoma | Solução |
 |---|---|
+| Nada acontece ao abrir o `iniciar.bat` | Leia a janela preta: ela diz o que falta (Python, extrair o ZIP, dependências). Se a janela nem abrir, botão direito no ZIP > **Propriedades** > marque **Desbloquear**, e extraia de novo |
+| Aviso "O Windows protegeu o computador" | **Mais informações** > **Executar assim mesmo** (o programa não é assinado digitalmente) |
 | Ícones errados depois de mover ou redimensionar o jogo | Configurações > **Recalibrar** |
 | A barra não aparece por cima do jogo | Use modo janela ou janela sem borda, não tela cheia exclusiva |
 | O jogo está no 2º monitor | `python skillbar.py --monitor 2 --calibrar` |
@@ -119,7 +120,7 @@ print da tela e o que aparece na janela preta do terminal.
 |---|---|
 | `skillbar.py` | Programa principal: calibração, barra, janela de buffs, configurações, atalhos |
 | `buffcore.py` | Lógica de buffs sem dependência de Windows: busca de ícone, cronômetro, textos |
-| `iniciar.bat` | Atalho para `python skillbar.py` |
+| `iniciar.bat` | Inicia o programa: confere o Python, instala as dependências e mostra erros em português |
 | `requirements.txt` | `mss`, `Pillow`, `numpy` |
 | `skillbar_config.json` | Criado no 1º uso. Configuração local, ignorada pelo git |
 | `buffs/` | Criada ao cadastrar buffs. Ícones `.png` de referência, ignorada pelo git |
