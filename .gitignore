@@ -1,0 +1,10 @@
+# Configuracao pessoal (calibracao da sua tela, posicao da barra, buffs cadastrados)
+skillbar_config.json
+skillbar_config.json.tmp
+
+# Icones de buff cadastrados por cada um (dependem da resolucao da tela)
+buffs/
+
+# Python
+__pycache__/
+*.pyc
