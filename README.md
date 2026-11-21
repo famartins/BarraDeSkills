@@ -59,7 +59,8 @@ Faça uma vez para cada buff:
    onde eles podem aparecer (ao lado do nível do personagem). Com muitos buffs, a fila
    quebra para a 2ª linha.
 3. Arraste um retângulo **justo** sobre o ícone do buff.
-4. **Clique na skill** que dá esse buff. O nome e a duração vêm sugeridos pela wiki;
+4. **Clique na skill** que dá esse buff e informe a **duração real** do buff, em segundos
+   (a wiki mostra o tempo de recarga da skill, não a duração do buff). O nome vem sugerido;
    ajuste se precisar. Salve.
 
 O buff aparece junto da skill enquanto estiver ativo. Passe o mouse para ver o tempo
@@ -119,7 +120,7 @@ print da tela e o que aparece na janela preta do terminal.
   (`telas.py`). As janelas sobrepostas continuam em Tk puro por causa dos estilos Win32.
 - **Dados das vocações:** `ferramentas/atualizar_wiki.py` lê a tabela "Magias" das
   páginas da [Bloodpedia](https://bloodpedia.vercel.app/) e gera `dados/vocacoes.json`
-  (nome, tipo, nível, link do ícone e duração sugerida). Os ícones pertencem aos criadores
+  (nome, tipo, nível e link do ícone de cada magia, e a arte de cada vocação). As imagens pertencem aos criadores
   do jogo e **não vão no repositório**: `wiki.py` baixa cada um na primeira vez para
   `cache/icones/`.
 - **Localização automática** (`localizar.py`, numpy):

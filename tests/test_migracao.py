@@ -58,6 +58,21 @@ class FinishWizardTest(unittest.TestCase):
                           [[0, 0, 44, 44]] * 3, "horizontal")
         self.assertEqual(app.cfg["buffs"][0]["skill"], 0)   # continua no Vampirismo
 
+    def test_bug_buff_da_v1_cuja_magia_saiu_da_barra(self):
+        # IRA estava na posicao 1 da barra antiga; a Ira Frenetica nao esta na nova.
+        # Antes: o buff continuava na posicao 1, em cima de outra skill.
+        app = self.make_app({"buffs": [{"name": "IRA", "skill": 1, "file": "a"}]})
+        app.finish_wizard("barbaro", ["furia", "vampirismo"], [[0, 0, 44, 44]] * 2,
+                          "horizontal")
+        b = app.cfg["buffs"][0]
+        self.assertIsNone(b["skill"])
+        self.assertEqual(b["skill_slug"], "ira-frenetica")   # volta se a magia voltar
+
+    def test_buff_sem_magia_identificavel_fica_solto(self):
+        app = self.make_app({"buffs": [{"name": "Buff", "skill": 0, "file": "a"}]})
+        app.finish_wizard("barbaro", ["furia"], [[0, 0, 44, 44]], "horizontal")
+        self.assertIsNone(app.cfg["buffs"][0]["skill"])
+
     def test_magia_retirada_da_barra_solta_o_buff(self):
         app = self.make_app({"magias": ["ira-frenetica", "vampirismo"],
                              "buffs": [{"name": "X", "skill": 0, "file": "a"}]})

@@ -24,8 +24,8 @@ CACHE_DIR = os.path.join(BASE_DIR, "cache", "icones")
 
 
 def load_vocacoes():
-    """Lista de {slug, nome, magias: [{nome, slug, tipo, nivel, icone_url,
-    duracao_sugerida}]}. Lista vazia se o arquivo nao existir."""
+    """Lista de {slug, nome, arte_url, magias: [{nome, slug, tipo, nivel, icone_url}]}.
+    Lista vazia se o arquivo nao existir."""
     try:
         with open(DATA_PATH, "r", encoding="utf-8") as f:
             return json.load(f)["vocacoes"]

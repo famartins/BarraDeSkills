@@ -1289,12 +1289,13 @@ class SkillBar:
             if not slug and isinstance(s, int) and 0 <= s < len(old):
                 slug = old[s]
             if not slug:
-                # buff de antes do assistente: tenta pelo nome ("IRA" -> "Ira Frenetica")
-                slug = match_by_name(b.get("name", ""), {k: names[k] for k in magias
-                                                          if k in names})
-            if slug:
-                b["skill_slug"] = slug
-                b["skill"] = magias.index(slug) if slug in magias else None
+                # buff de antes do assistente: tenta pelo nome ("IRA" -> "Ira Frenetica"),
+                # entre TODAS as magias da vocacao (a dele pode ter saido da barra)
+                slug = match_by_name(b.get("name", ""), names)
+            b["skill_slug"] = slug
+            # sem magia conhecida ou magia fora da barra: o buff fica solto, nunca
+            # em cima de outra skill que tenha ido parar naquela posicao
+            b["skill"] = magias.index(slug) if slug in magias else None
         self.cfg.update(vocacao=vocacao, magias=magias, regions=regions,
                         orientation=orientation)
         save_config(self.cfg)

@@ -612,8 +612,6 @@ class BuffEditor(Window):
             return
         if not self.name.get().strip():
             self.name.insert(0, m["nome"])
-        if not self.dur.get().strip() and m.get("duracao_sugerida"):
-            self.dur.insert(0, str(m["duracao_sugerida"]))
 
     def save(self):
         try:

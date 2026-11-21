@@ -6,9 +6,10 @@ Gera dados/vocacoes.json a partir da tabela "Magias" da Bloodpedia.
 So o mantenedor precisa rodar isto, quando a wiki mudar:
     python ferramentas/atualizar_wiki.py
 
-Guarda apenas nome, tipo, nivel minimo, link do icone e uma duracao sugerida
-(tirada do texto do efeito). Os icones NAO sao guardados no repositorio: o
-programa baixa cada um na primeira vez (veja wiki.py).
+Guarda apenas nome, tipo, nivel minimo e link do icone de cada magia, e o link
+da arte de cada vocacao (pagina inicial). As imagens NAO sao guardadas no
+repositorio: o programa baixa cada uma na primeira vez (veja wiki.py).
+A duracao dos buffs nao vem da wiki: o tempo citado la nao e a duracao real.
 """
 
 import html
@@ -45,17 +46,6 @@ def texto(fragmento):
     return html.unescape(TAG.sub("", fragmento)).strip()
 
 
-def duracao_sugerida(efeito):
-    """'... por 60 segundos.' -> 60. Usa a ultima duracao citada (a do buff)."""
-    achados = re.findall(r"(?:por|durante)\s+(\d+(?:[.,]\d+)?)\s*(segundos?|minutos?)",
-                         efeito, re.I)
-    if not achados:
-        return 0
-    valor, unidade = achados[-1]
-    seg = float(valor.replace(",", "."))
-    return int(seg * 60 if unidade.lower().startswith("min") else seg)
-
-
 def ler_magias(pagina):
     magias, vistos = [], set()
     for linha in ROW.findall(pagina):
@@ -75,27 +65,38 @@ def ler_magias(pagina):
             nivel = int(texto(campos.get("Lvl_1", "")) or 0)
         except ValueError:
             nivel = 0
-        dur = duracao_sugerida(texto(campos.get("Efeito", "")))
         magias.append({
             "nome": texto(campos["Magia"]),
             "slug": slug,
             "tipo": tipo,
             "nivel": nivel,
             "icone_url": urllib.parse.urljoin(SITE, img.group(1)),
-            "duracao_sugerida": dur if tipo == "Suporte" else 0,
         })
     return magias
 
 
+def artes(home):
+    """{nome_da_vocacao: url} das artes (ex.: .../BárbaroArtworkM.png) da pagina inicial."""
+    out = {}
+    for src in re.findall(r'<img[^>]+src="([^"]+ArtworkM\.png)"', home):
+        nome = urllib.parse.unquote(src.rsplit("/", 1)[-1])[:-len("ArtworkM.png")]
+        out.setdefault(nome, urllib.parse.urljoin(SITE, src))
+    return out
+
+
 def main():
     dados = {"fonte": SITE + "/wiki/", "vocacoes": []}
+    arte = artes(baixar(SITE + "/"))
     for slug, nome in VOCACOES:
         magias = ler_magias(baixar("%s/wiki/%s/" % (SITE, slug)))
         print("%-10s %d magias" % (nome, len(magias)))
         if not magias:
             print("  ERRO: nenhuma magia lida; a wiki mudou de formato?")
             sys.exit(1)
-        dados["vocacoes"].append({"slug": slug, "nome": nome, "magias": magias})
+        if nome not in arte:
+            print("  aviso: sem arte para %s" % nome)
+        dados["vocacoes"].append({"slug": slug, "nome": nome, "arte_url": arte.get(nome, ""),
+                                  "magias": magias})
     os.makedirs(os.path.dirname(SAIDA), exist_ok=True)
     with open(SAIDA, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False, indent=1)
