@@ -1,26 +1,24 @@
 # -*- coding: utf-8 -*-
 """
 Dados das vocacoes e magias (dados/vocacoes.json, gerado da Bloodpedia) e cache
-local dos icones.
+local das imagens (icones das magias e arte de cada vocacao).
 
-Os icones pertencem aos criadores do jogo, entao nao vao no repositorio: sao
-baixados da Bloodpedia na primeira vez e guardados em cache/icones/.
+As imagens pertencem aos criadores do jogo, entao nao vao no repositorio: sao
+baixadas da Bloodpedia na primeira vez e guardadas em cache/.
 """
 
 import json
 import os
-import sys
 import threading
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
-if getattr(sys, "frozen", False):
-    BASE_DIR = os.path.dirname(sys.executable)
-else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+from config import BASE_DIR, RES_DIR
 
-DATA_PATH = os.path.join(BASE_DIR, "dados", "vocacoes.json")
+DATA_PATH = os.path.join(RES_DIR, "dados", "vocacoes.json")
 CACHE_DIR = os.path.join(BASE_DIR, "cache", "icones")
+ART_DIR = os.path.join(BASE_DIR, "cache", "artes")
+USER_AGENT = "BarraDeSkills/2.1"
 
 
 def load_vocacoes():
@@ -45,14 +43,18 @@ def has_icon(vocacao_slug, magia):
     return os.path.isfile(icon_path(vocacao_slug, magia))
 
 
-def download_icon(vocacao_slug, magia, timeout=15):
-    """Baixa um icone para o cache. Retorna o caminho, ou None se falhar."""
-    path = icon_path(vocacao_slug, magia)
+def art_path(vocacao):
+    return os.path.join(ART_DIR, vocacao["slug"] + ".png")
+
+
+def _download(url, path, timeout=15):
+    """Baixa um PNG para `path`. Retorna o caminho, ou None se falhar."""
     if os.path.isfile(path):
         return path
+    if not url:
+        return None
     try:
-        req = urllib.request.Request(magia["icone_url"],
-                                     headers={"User-Agent": "BarraDeSkills/2.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
         with urllib.request.urlopen(req, timeout=timeout) as r:
             data = r.read()
         if not data.startswith(b"\x89PNG"):
@@ -67,23 +69,37 @@ def download_icon(vocacao_slug, magia, timeout=15):
         return None
 
 
-def download_icons_async(vocacao_slug, magias, on_each=None, on_done=None):
-    """Baixa em segundo plano os icones que faltam.
-    on_each(magia, caminho_ou_None) e on_done(n_falhas) sao chamados na thread
-    de download: na interface, use root.after para voltar a thread do Tk."""
-    missing = [m for m in magias if not has_icon(vocacao_slug, m)]
+def download_icon(vocacao_slug, magia, timeout=15):
+    return _download(magia["icone_url"], icon_path(vocacao_slug, magia), timeout)
 
+
+def _run_async(jobs, on_each, on_done):
+    """jobs = [(item, funcao_que_baixa)]. Callbacks rodam na thread de download:
+    na interface, use root.after para voltar a thread do Tk."""
     def run():
         fails = 0
         with ThreadPoolExecutor(max_workers=6) as pool:
-            for m, path in zip(missing, pool.map(
-                    lambda m: download_icon(vocacao_slug, m), missing)):
+            for (item, _f), path in zip(jobs, pool.map(lambda j: j[1](), jobs)):
                 fails += path is None
                 if on_each:
-                    on_each(m, path)
+                    on_each(item, path)
         if on_done:
             on_done(fails)
 
     t = threading.Thread(target=run, daemon=True)
     t.start()
     return t
+
+
+def download_icons_async(vocacao_slug, magias, on_each=None, on_done=None):
+    """Baixa em segundo plano os icones que faltam."""
+    jobs = [(m, lambda m=m: download_icon(vocacao_slug, m))
+            for m in magias if not has_icon(vocacao_slug, m)]
+    return _run_async(jobs, on_each, on_done)
+
+
+def download_arts_async(vocacoes, on_each=None, on_done=None):
+    """Baixa em segundo plano as artes das vocacoes que faltam."""
+    jobs = [(v, lambda v=v: _download(v.get("arte_url"), art_path(v), timeout=20))
+            for v in vocacoes if not os.path.isfile(art_path(v))]
+    return _run_async(jobs, on_each, on_done)
