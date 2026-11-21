@@ -44,9 +44,13 @@ class ConfigTest(unittest.TestCase):
         cfg = config.load_config(self.path)           # arquivo nao existe
         self.assertFalse(config.is_configured(cfg))
         self.assertEqual(cfg["bars"], [])
+        self.assertEqual((cfg["profile"], cfg["profiles"]), ("", {}))   # nenhum vazio
+        config.switch_profile(cfg, "Cherykan", create=True)
+        self.assertEqual(config.profile_names(cfg), ["Cherykan"])
 
     def test_personagens_sao_independentes(self):
         cfg = config.load_config(self.path)
+        config.switch_profile(cfg, "Principal", create=True)
         cfg.update(vocacao="barbaro", bars=[{"regions": [R], "magias": ["furia"],
                                              "orientation": "horizontal", "pos": None}])
         config.switch_profile(cfg, "Maguinho", create=True)
@@ -72,6 +76,7 @@ class ConfigTest(unittest.TestCase):
 
     def test_renomear(self):
         cfg = config.load_config(self.path)
+        config.switch_profile(cfg, "Principal", create=True)
         self.assertTrue(config.rename_profile(cfg, "Principal", "Cherykan"))
         self.assertEqual(cfg["profile"], "Cherykan")
         self.assertFalse(config.rename_profile(cfg, "Cherykan", ""))

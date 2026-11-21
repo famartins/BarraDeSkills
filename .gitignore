@@ -14,3 +14,7 @@ cache/
 
 # Registro do iniciar.bat
 diagnostico.txt
+
+# Executavel gerado (ferramentas/gerar_exe.py)
+build/
+dist/

@@ -11,6 +11,7 @@ As janelas que ficam por cima do jogo (barras e buffs) continuam em Tk puro no
 overlay.py, porque precisam de estilos especiais do Windows.
 """
 
+import os
 import webbrowser
 from tkinter import messagebox
 
@@ -26,6 +27,7 @@ ctk.set_default_color_theme("dark-blue")
 
 VERSION = "2.1"
 REPO_URL = "https://github.com/famartins/BarraDeSkills"
+ICON_PATH = os.path.join(config.RES_DIR, "dados", "icone.ico")
 
 # cores
 ACCENT = "#b3261e"
@@ -145,6 +147,14 @@ class Window(ctk.CTkToplevel):
                                          max(0, (self.winfo_screenheight() - h) // 3)))
         self.minsize(w, h)
         self.after(250, self.bring_front)
+        # o CustomTkinter poe o icone dele ~200 ms depois de abrir; troca pelo nosso
+        self.after(300, self.set_icon)
+
+    def set_icon(self):
+        try:
+            self.iconbitmap(ICON_PATH)
+        except Exception:
+            pass
 
     def bring_front(self):
         try:

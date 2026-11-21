@@ -1,54 +1,73 @@
 # Barra de Skills para Bloodstone
 
-Coloca as skills do Bloodstone numa barra **horizontal ou vertical** onde você quiser na
-tela, para acompanhar as recargas sem olhar para a lateral. Os buffs ativos (Ira,
-Vampirismo etc.) aparecem junto da skill que os gera.
+Coloca as skills do Bloodstone em **uma ou duas barras** (horizontais ou verticais) onde
+você quiser na tela, para acompanhar as recargas sem olhar para a lateral. Os buffs
+ativos (Ira, Vampirismo etc.) aparecem junto da skill que os gera e **piscam quando
+estão acabando**.
 
 - **Só lê a imagem da tela.** Não mexe na memória do jogo e não envia cliques nem teclas.
 - A recarga e o nível aparecem igual ao jogo, porque a barra é uma cópia da imagem.
 - Você escolhe a vocação e as magias, e o programa **acha sozinho** onde elas estão.
+- Um **perfil por personagem**: cada um guarda a sua vocação, barras e buffs.
 - Windows apenas. O jogo precisa estar **em janela** ou **janela sem borda**.
 
 > Programas que leem a tela costumam ser tranquilos, mas confira as regras do jogo antes de usar.
 
 ## Instalação
 
-**Requisitos:** Windows 10 (versão 2004 ou mais nova) ou Windows 11, e Python 3.10 ou mais novo.
+**Requisitos:** Windows 10 (versão 2004 ou mais nova) ou Windows 11. Não precisa instalar
+Python.
 
-1. **Instale o Python** em <https://www.python.org/downloads/>.
-   Na primeira tela do instalador, marque **"Add python.exe to PATH"**.
-2. **Baixe o programa.** Escolha uma das opções:
-   - **ZIP (mais simples):** no topo desta página, clique em **Code > Download ZIP**.
-     Depois, botão direito no ZIP > **Extrair tudo...**, para uma pasta como
-     `C:\BarraDeSkills`. Não rode o programa de dentro do ZIP.
-   - **Git:** `git clone https://github.com/famartins/BarraDeSkills.git`
-3. **Dê dois cliques em `iniciar.bat`.** Na primeira vez, ele instala as dependências
-   sozinho. Se faltar algo, a janela preta diz o que é e como resolver.
+1. Na página de **[Releases](https://github.com/famartins/BarraDeSkills/releases/latest)**,
+   baixe o arquivo **`BarraDeSkills-vX.Y-windows.zip`**.
+2. Botão direito no ZIP > **Extrair tudo...**, para uma pasta como `C:\BarraDeSkills`.
+   Não rode o programa de dentro do ZIP.
+3. Dê dois cliques em **`BarraDeSkills.exe`**.
 
-   Para instalar manualmente: `pip install -r requirements.txt`
+Na primeira vez, o Windows pode mostrar **"O Windows protegeu o computador"**. Clique em
+**Mais informações** > **Executar assim mesmo**. O aviso aparece porque o programa não é
+assinado digitalmente.
 
-Para atualizar depois: baixe o ZIP de novo e substitua os arquivos (sua configuração
-fica salva no `skillbar_config.json`, que não vem no ZIP), ou rode `git pull`.
+**Para atualizar:** baixe o ZIP novo e extraia **por cima** da pasta antiga. Sua
+configuração (`skillbar_config.json` e a pasta `buffs`) fica preservada.
+
+<details>
+<summary>Rodar pelo código-fonte (com Python)</summary>
+
+1. Instale o Python 3.10 ou mais novo em <https://www.python.org/downloads/>, marcando
+   **"Add python.exe to PATH"**.
+2. Baixe o código (**Code > Download ZIP**, ou `git clone`) e extraia.
+3. Dê dois cliques em `iniciar.bat`. Ele instala as dependências sozinho na primeira vez.
+   Para instalar manualmente: `pip install -r requirements.txt`.
+
+</details>
 
 ## Primeiro uso
 
-Abra o jogo em janela e dê dois cliques em `iniciar.bat`. Abre um assistente:
+Abra o jogo em janela e abra o programa. Um assistente pede:
 
-1. **Vocação:** escolha entre Cavaleiro, Bárbaro, Arqueiro, Xamã e Mago.
-2. **Magias:** clique nas magias que quer na barra. A ordem dos cliques é a ordem na
-   barra. Embaixo, escolha **Horizontal** ou **Vertical**.
-3. **Achar na tela:** na primeira vez, a tela congela e você arrasta um retângulo sobre a
+1. **Personagem:** digite o nome do personagem e clique em **Criar**. Na próxima vez, é só
+   escolher o personagem e clicar em **Usar**.
+2. **Vocação:** Cavaleiro, Bárbaro, Arqueiro, Xamã ou Mago.
+3. **Magias:**
+   - No alto, escolha **Barra 1** ou **Barra 2** e clique nas magias de cada uma. A ordem
+     dos cliques é a ordem na barra. Cada barra tem a sua orientação (**Horizontal** ou
+     **Vertical**).
+   - O botão **Separar** põe as magias de Ataque na barra 1 e as demais na barra 2.
+   - **Só buffs:** esconde as barras de skills e mostra só os buffs, numa janelinha.
+4. **Achar na tela:** na primeira vez, a tela congela e você arrasta um retângulo sobre a
    **coluna inteira de skills** do jogo. O programa procura cada magia ali.
-4. **Confirmar:** confira se o ícone da wiki bate com o da tela.
+5. **Confirmar:** confira se o ícone da wiki bate com o da tela.
    - ✓ verde: encontrada.
    - ⚠ amarelo: confira e clique em **É a mesma**.
    - ✗ vermelho: use **Marcar** e clique no ícone, ou **Tirar da barra**.
-5. **Pronto.** Arraste a barra para onde quiser. A posição fica salva.
+6. **Pronto.** Arraste cada barra para onde quiser. A posição fica salva.
 
-Recomendado: botão direito na barra > aba **Jogo** > **Definir janela do jogo**, para a
-barra sumir quando você trocar de programa.
+Recomendado: botão direito na barra > aba **Jogo** > **Definir janela do jogo**, para as
+barras sumirem quando você trocar de programa.
 
-Para mudar depois: botão direito na barra > **Trocar vocação/magias**.
+Para mudar depois: botão direito na barra > aba **Personagem**. Lá dá para trocar de
+personagem, criar, renomear, apagar e **Trocar vocação/magias**.
 
 ### Buffs
 
@@ -59,47 +78,51 @@ Faça uma vez para cada buff:
    onde eles podem aparecer (ao lado do nível do personagem). Com muitos buffs, a fila
    quebra para a 2ª linha.
 3. Arraste um retângulo **justo** sobre o ícone do buff.
-4. **Clique na skill** que dá esse buff e informe a **duração real** do buff, em segundos
-   (a wiki mostra o tempo de recarga da skill, não a duração do buff). O nome vem sugerido;
-   ajuste se precisar. Salve.
+4. **Clique na skill** que dá esse buff e informe a **duração real** do buff, em segundos.
+   A wiki mostra o tempo de recarga da skill, não a duração do buff. O nome vem
+   sugerido. Salve.
 
 O buff aparece junto da skill enquanto estiver ativo. Passe o mouse para ver o tempo
 restante.
 
-**Usou a skill de novo antes do buff acabar?** O programa percebe que o ícone da skill
-escureceu (entrou em recarga) e **reinicia o tempo** do buff. Dá para desligar isso por
-buff em **Editar**.
-
-**Limitação:** o tempo é uma contagem do próprio programa, a partir da duração
-informada, porque o tooltip do jogo não pode ser copiado.
+- **Acabando:** nos últimos 10 segundos, o buff **pisca** com uma moldura vermelha. Dá
+  para mudar o tempo (ou desligar) e ligar um **apito** na aba **Buffs** das configurações.
+- **Usou a skill de novo antes do buff acabar?** O programa percebe que o ícone da skill
+  escureceu (entrou em recarga) e **reinicia o tempo** do buff. Dá para desligar isso por
+  buff em **Editar**.
+- **Limitação:** o tempo é uma contagem do próprio programa, a partir da duração
+  informada, porque o tooltip do jogo não pode ser copiado.
 
 ## Atalhos
 
 | Ação | Como |
 |---|---|
-| Mover a barra | Arrastar com o botão esquerdo |
-| Zoom da barra | Roda do mouse sobre a barra |
+| Mover uma barra | Arrastar com o botão esquerdo |
+| Zoom das barras | Roda do mouse sobre a barra |
 | Configurações | Botão direito na barra ou **Ctrl+Alt+F11** |
-| Click-through (cliques atravessam a barra) | **Ctrl+Alt+F10** |
+| Click-through (cliques atravessam as barras) | **Ctrl+Alt+F10** |
 | Cadastrar buff | **Ctrl+Alt+F12** |
+
+Nas configurações (aba **Barras**) também ficam **opacidade**, zoom, espaço entre ícones,
+atualizações por segundo e a orientação de cada barra.
 
 ## Problemas comuns
 
 | Sintoma | Solução |
 |---|---|
-| Nada acontece ao abrir o `iniciar.bat` | Leia a janela preta: ela diz o que falta (Python, extrair o ZIP, dependências). Tudo fica registrado em **`diagnostico.txt`**, na pasta do programa: mande esse arquivo numa issue. Se o `diagnostico.txt` nem for criado, o Windows ou o antivírus bloqueou o arquivo: botão direito no ZIP > **Propriedades** > marque **Desbloquear**, extraia de novo e libere a pasta no antivírus |
-| Aviso "O Windows protegeu o computador" | **Mais informações** > **Executar assim mesmo** (o programa não é assinado digitalmente) |
+| O programa não abre ou fecha sozinho | Veja o **`diagnostico.txt`**, criado na pasta do programa, e mande-o numa issue. Se o arquivo nem for criado, o Windows ou o antivírus bloqueou o programa: botão direito no ZIP > **Propriedades** > marque **Desbloquear**, extraia de novo e libere a pasta no antivírus |
+| Aviso "O Windows protegeu o computador" | **Mais informações** > **Executar assim mesmo** |
 | Ícones errados depois de mover ou redimensionar o jogo | Configurações > **Trocar vocação/magias** > **Procurar de novo** |
 | O assistente não acha uma magia | Use **Marcar**. Se a magia ainda não foi aprendida ou está bloqueada, o ícone fica diferente |
-| Os ícones da wiki não aparecem | Eles são baixados na primeira vez. Confira a internet. Dá para continuar sem eles |
+| As imagens da wiki não aparecem | Elas são baixadas na primeira vez. Confira a internet. Dá para continuar sem elas |
 | A barra não aparece por cima do jogo | Use modo janela ou janela sem borda, não tela cheia exclusiva |
-| O jogo está no 2º monitor | `python skillbar.py --monitor 2` |
+| O jogo está no 2º monitor | `BarraDeSkills.exe --monitor 2` (ou `python skillbar.py --monitor 2`) |
 | A barra some mesmo com o jogo aberto | O jogo precisa estar em primeiro plano. Ou use **Mostrar sempre** na aba Jogo |
 | O buff não aparece | Redefina a área dos buffs cobrindo todas as linhas (aba Buffs > **Redefinir área**) |
 | Quero começar do zero | Apague o `skillbar_config.json` e a pasta `buffs` |
 
 Achou um bug? Abra uma [issue](https://github.com/famartins/BarraDeSkills/issues) com um
-print da tela e o que aparece na janela preta do terminal.
+print da tela e o `diagnostico.txt`.
 
 ---
 
@@ -108,21 +131,26 @@ print da tela e o que aparece na janela preta do terminal.
 ### Como funciona
 
 - **Captura:** a cada quadro (padrão 30 FPS, ajustável), o programa captura com
-  [`mss`](https://github.com/BoboTiG/python-mss) o retângulo que engloba as skills. Depois
-  recorta cada ícone e monta a faixa (horizontal ou vertical) com Pillow. Com zoom, a
-  ampliação usa *nearest neighbor* para manter o pixel art nítido.
-- **Janela sobreposta:** é uma janela Tkinter sem borda, `topmost`, com os estilos Win32
-  `WS_EX_NOACTIVATE` (não rouba o foco do jogo), `WS_EX_TOOLWINDOW` (não aparece na
-  barra de tarefas) e `WS_EX_LAYERED`. O click-through liga o `WS_EX_TRANSPARENT`.
+  [`mss`](https://github.com/BoboTiG/python-mss) o retângulo que engloba as skills de cada
+  barra. Depois recorta cada ícone e monta a faixa com Pillow. Com zoom, a ampliação usa
+  *nearest neighbor* para manter o pixel art nítido.
+- **Janelas sobrepostas** (`overlay.py`): uma janela Tkinter por barra, sem borda e
+  `topmost`, com os estilos Win32 `WS_EX_NOACTIVATE` (não rouba o foco do jogo),
+  `WS_EX_TOOLWINDOW` (não aparece na barra de tarefas) e `WS_EX_LAYERED` (opacidade, via
+  `SetLayeredWindowAttributes`). O click-through liga o `WS_EX_TRANSPARENT`.
 - **Sem eco na captura:** `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)` impede que
-  a própria barra apareça nas capturas, mesmo sobreposta às skills originais.
+  as próprias barras apareçam nas capturas, mesmo sobrepostas às skills originais.
 - **Telas:** [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter), tema escuro
-  (`telas.py`). As janelas sobrepostas continuam em Tk puro por causa dos estilos Win32.
+  (`telas.py`).
+- **Personagens** (`config.py`): as opções gerais valem para todos. Vocação, barras e
+  buffs pertencem a cada personagem. O personagem ativo fica no nível de cima da
+  configuração, e uma cópia dele é guardada em `profiles` a cada gravação. Configurações
+  antigas (uma barra só) são migradas sozinhas para o personagem "Principal".
 - **Dados das vocações:** `ferramentas/atualizar_wiki.py` lê a tabela "Magias" das
-  páginas da [Bloodpedia](https://bloodpedia.vercel.app/) e gera `dados/vocacoes.json`
-  (nome, tipo, nível e link do ícone de cada magia, e a arte de cada vocação). As imagens pertencem aos criadores
-  do jogo e **não vão no repositório**: `wiki.py` baixa cada um na primeira vez para
-  `cache/icones/`.
+  páginas da [Bloodpedia](https://bloodpedia.vercel.app/) e a arte de cada vocação da
+  página inicial, e gera `dados/vocacoes.json`. As imagens pertencem aos criadores do
+  jogo e **não vão no repositório nem no executável**: `wiki.py` baixa cada uma na
+  primeira vez para `cache/`.
 - **Localização automática** (`localizar.py`, numpy):
   - Compara só o **miolo** de cada ícone da wiki (sem os cantos onde o jogo desenha a
     tecla de atalho e o "Lv").
@@ -130,66 +158,99 @@ print da tela e o que aparece na janela preta do terminal.
     caso comum, porque os ícones da wiki têm 44 px, como no jogo em 1440p.
   - A busca grossa amostra pixels e posições com `sliding_window_view` e refina em volta
     dos melhores candidatos.
-  - Classificação pelo erro absoluto médio: até 12 = encontrada, até 30 = dúvida (o ícone
-    pode estar sem cor, por exemplo bloqueado), acima disso = não encontrada.
+  - Classificação pelo erro absoluto médio: até 12 = encontrada, até 30 = dúvida, acima
+    disso = não encontrada.
 - **Reconhecimento de buffs** (`buffcore.py`): 10× por segundo, captura a área dos buffs
-  e procura cada ícone cadastrado, numa busca grossa seguida de confirmação. O buff é
-  aceito se o erro médio for ≤ `buff_threshold` (padrão 14, numa escala de 0 a 255). Se a
-  área marcada for pequena, a busca cresce para os lados e para baixo (3 linhas).
+  e procura cada ícone cadastrado. O buff é aceito se o erro médio for ≤ `buff_threshold`.
+  Se a área marcada for pequena, a busca cresce para os lados e para baixo (3 linhas).
 - **Cronômetro** (`BuffTracker`): o buff começa a contar quando aparece. Ele continua
   "ativo" por 1 s depois de sumir, para não piscar se algo cobrir o ícone. Se o jogo sai
   de foco, a contagem é congelada e retomada quando o jogo volta.
+- **Aviso de fim:** com o tempo restante ≤ `warn_seconds`, a moldura do buff fica
+  vermelha e o ícone alterna com uma versão apagada, cerca de 3 vezes por segundo. O apito
+  (`winsound.Beep`, numa thread) toca uma vez por ativação.
 - **Reinício ao reusar** (`CastDetector`): acompanha o brilho médio de cada skill. Uma
   queda brusca (abaixo de 75% do normal, em até 3 quadros) indica que a skill entrou em
   recarga. Depois disso, não dispara de novo até o brilho voltar a 90%. Escurecimentos
-  lentos (por exemplo, a noite no jogo) não contam.
-- **Buffs junto das skills:** é uma segunda janela sobreposta, alinhada à barra (acima na
-  horizontal, ao lado na vertical). O fundo usa uma *color key* (`LWA_COLORKEY`, cor
-  `#ff00fe`), então só os ícones são visíveis e os cliques atravessam o resto.
+  lentos não contam.
+- **Buffs junto das skills:** uma janela por barra, alinhada a ela (acima na horizontal,
+  ao lado na vertical). O fundo usa uma *color key* (`LWA_COLORKEY`, cor `#ff00fe`), então
+  só os ícones são visíveis e os cliques atravessam o resto. Buffs sem skill, ou no modo só
+  buffs, vão para uma janelinha solta e arrastável.
+- **Diagnóstico:** o programa registra a inicialização e qualquer erro, inclusive
+  travamentos graves (`faulthandler`), em `diagnostico.txt`. No `.exe`, que não tem janela
+  preta, um erro fatal também aparece numa caixa de mensagem.
 
 ### Arquivos
 
 | Arquivo | Conteúdo |
 |---|---|
-| `skillbar.py` | Programa principal: barra, janela de buffs, calibração, atalhos |
+| `skillbar.py` | Programa principal: ciclo, personagens, buffs, aviso, atalhos |
+| `overlay.py` | Janelas por cima do jogo: barras, buffs, tela de marcação, estilos Win32 |
 | `telas.py` | Assistente, configurações e editor de buff (CustomTkinter) |
-| `wiki.py` | Carrega `dados/vocacoes.json` e mantém o cache de ícones |
+| `config.py` | Configuração, personagens e migração (sem Windows, testável) |
+| `wiki.py` | Carrega `dados/vocacoes.json` e mantém o cache de imagens |
 | `localizar.py` | Acha as magias na barra lateral do jogo |
 | `buffcore.py` | Busca de ícone, cronômetro, detecção de uso da skill e área de busca |
-| `dados/vocacoes.json` | Magias de cada vocação, gerado da Bloodpedia |
-| `ferramentas/atualizar_wiki.py` | Regera o JSON quando a wiki mudar |
+| `dados/` | `vocacoes.json` (gerado da Bloodpedia) e `icone.ico` |
+| `ferramentas/atualizar_wiki.py` | Regera o `vocacoes.json` quando a wiki mudar |
+| `ferramentas/gerar_exe.py` | Gera o executável e o ZIP para Releases |
 | `tests/` | Testes: `python -m unittest discover -s tests` |
-| `iniciar.bat` | Inicia o programa: confere o Python, instala as dependências e mostra erros em português |
-| `requirements.txt` | `mss`, `Pillow`, `numpy`, `customtkinter` |
-| `skillbar_config.json`, `buffs/`, `cache/` | Criados no uso. Locais, ignorados pelo git |
+| `iniciar.bat` | Roda pelo código-fonte: confere o Python e instala as dependências |
+| `skillbar_config.json`, `buffs/`, `cache/`, `diagnostico.txt` | Criados no uso. Locais, ignorados pelo git |
+
+### Gerar o executável
+
+```
+pip install pyinstaller
+python ferramentas/gerar_exe.py
+```
+
+O resultado é `dist/BarraDeSkills-vX.Y-windows.zip`, com `BarraDeSkills.exe` e a pasta
+`_internal/`. O build usa o modo pasta (`--onedir`) e `--windowed`, sem console. Os
+arquivos de `dados/` e os do CustomTkinter vão embutidos. A versão vem de `VERSION`, em
+`telas.py`.
+
+Para publicar: no GitHub, **Releases** > **Draft a new release** > crie a tag (ex.:
+`v2.1`) > anexe o ZIP > **Publish release**.
 
 ### Linha de comando
 
 ```
-python skillbar.py                 inicia (assistente no primeiro uso)
-python skillbar.py --calibrar      marca os ícones manualmente, sem o assistente
-python skillbar.py --monitor 2     usa o monitor 2 nas telas de marcação
-python skillbar.py --janelas       lista as janelas abertas (executável e título)
-python skillbar.py --jogo X.exe    só mostra a barra com X.exe em primeiro plano ("" desativa)
+BarraDeSkills.exe (ou python skillbar.py)    inicia
+  --calibrar      marca os ícones da barra 1 manualmente, sem o assistente
+  --monitor 2     usa o monitor 2 nas telas de marcação
+  --janelas       lista as janelas abertas (executável e título)
+  --jogo X.exe    só mostra as barras com X.exe em primeiro plano ("" desativa)
 ```
 
 ### Configuração (`skillbar_config.json`)
 
+**Gerais:**
+
 | Chave | Padrão | Descrição |
 |---|---|---|
-| `vocacao` / `magias` | `""` / `[]` | Vocação e magias (slugs da wiki, na ordem da barra) |
-| `regions` | `[]` | `[x, y, largura, altura]` de cada skill, em pixels da tela |
-| `sidebar_area` | `null` | `[x, y, largura, altura]` da barra lateral de skills do jogo |
-| `orientation` | `"horizontal"` | `"horizontal"` ou `"vertical"` |
 | `zoom` / `gap` / `fps` | `1.0` / `4` / `30` | Ampliação, espaço entre ícones e atualizações por segundo |
-| `pos` | automático | Posição `[x, y]` da barra |
-| `click_through` | `false` | Cliques atravessam a barra |
-| `exclude_from_capture` | `true` | A barra não aparece em capturas de tela |
+| `opacity` | `1.0` | Opacidade das barras e buffs (0,2 a 1,0) |
+| `click_through` | `false` | Cliques atravessam as barras |
+| `exclude_from_capture` | `true` | As barras não aparecem em capturas de tela |
 | `game_process` / `game_title` | `""` | Executável ou trecho do título da janela do jogo |
-| `buffs` | `[]` | `{name, duration, desc, file, skill, skill_slug, restart_on_cast}`. `skill` é o índice na barra (0 = 1ª) ou `null`. `skill_slug` mantém o vínculo se a ordem mudar |
+| `sidebar_area` | `null` | `[x, y, largura, altura]` da barra lateral de skills do jogo |
 | `buff_area` | `null` | `[x, y, largura, altura]` da área de buffs no jogo |
+| `buff_pos` | `null` | Posição da janelinha de buffs soltos |
 | `buff_zoom` | `1.5` | Ampliação extra dos ícones de buff |
 | `buff_threshold` | `14` | Tolerância do reconhecimento (menor = mais exato) |
+| `warn_seconds` / `warn_sound` | `10` / `false` | Piscar nos últimos N segundos (0 = nunca) e apito |
+| `profile` / `profiles` | `""` / `{}` | Personagem ativo e os dados de cada personagem |
+
+**De cada personagem** (no nível de cima para o ativo e em `profiles`):
+
+| Chave | Descrição |
+|---|---|
+| `vocacao` | Slug da vocação (ex.: `barbaro`) |
+| `bars` | Até 2 barras: `{regions, magias, orientation, pos}` |
+| `buffs` | `{name, duration, desc, file, skill, skill_slug, restart_on_cast}`. `skill` é o índice **global** da skill (barra 1, depois barra 2) ou `null`. `skill_slug` mantém o vínculo se a ordem mudar |
+| `only_buffs` | Esconde as barras e mostra só os buffs |
 
 O programa ativa *DPI awareness* por monitor, então as coordenadas são pixels reais
 mesmo com escala do Windows acima de 100%.

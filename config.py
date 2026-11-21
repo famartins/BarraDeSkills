@@ -75,8 +75,11 @@ def migrate(cfg):
         if regions and not cfg.get("bars"):
             cfg["bars"] = [bar]
     if not cfg.get("profile"):
-        cfg["profile"] = "Principal"
-    if cfg["profile"] not in cfg["profiles"]:
+        # configuracao de antes dos personagens vira o personagem "Principal";
+        # instalacao nova fica sem nenhum (o assistente pede o nome)
+        if cfg.get("bars") or cfg.get("buffs") or cfg.get("vocacao"):
+            cfg["profile"] = "Principal"
+    if cfg.get("profile") and cfg["profile"] not in cfg["profiles"]:
         cfg["profiles"][cfg["profile"]] = snapshot(cfg)
     return cfg
 
@@ -144,7 +147,7 @@ def delete_profile(cfg, name):
 
 def rename_profile(cfg, old, new):
     new = new.strip()
-    if not new or new == old or new in cfg["profiles"]:
+    if not new or new == old or new in cfg["profiles"] or old not in cfg["profiles"]:
         return False
     cfg["profiles"][new] = cfg["profiles"].pop(old)
     if cfg.get("profile") == old:
