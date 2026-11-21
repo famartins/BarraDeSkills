@@ -46,15 +46,17 @@ configuração (`skillbar_config.json` e a pasta `buffs`) fica preservada.
 
 Abra o jogo em janela e abra o programa. Um assistente pede:
 
-1. **Personagem:** digite o nome do personagem e clique em **Criar**. Na próxima vez, é só
-   escolher o personagem e clicar em **Usar**.
+1. **Personagem:** digite o nome do personagem e clique em **Criar**. Toda vez que o
+   programa abre, ele mostra os personagens salvos para você escolher com qual jogar
+   (**Usar**).
 2. **Vocação:** Cavaleiro, Bárbaro, Arqueiro, Xamã ou Mago.
 3. **Magias:**
    - No alto, escolha **Barra 1** ou **Barra 2** e clique nas magias de cada uma. A ordem
      dos cliques é a ordem na barra. Cada barra tem a sua orientação (**Horizontal** ou
      **Vertical**).
    - O botão **Separar** põe as magias de Ataque na barra 1 e as demais na barra 2.
-   - **Só buffs:** esconde as barras de skills e mostra só os buffs, numa janelinha.
+   - **Só buffs:** esconde as barras de skills e mostra só os buffs, numa caixa
+     arrastável com o nome do personagem.
 4. **Achar na tela:** na primeira vez, a tela congela e você arrasta um retângulo sobre a
    **coluna inteira de skills** do jogo. O programa procura cada magia ali.
 5. **Confirmar:** confira se o ícone da wiki bate com o da tela.
@@ -66,8 +68,8 @@ Abra o jogo em janela e abra o programa. Um assistente pede:
 Recomendado: botão direito na barra > aba **Jogo** > **Definir janela do jogo**, para as
 barras sumirem quando você trocar de programa.
 
-Para mudar depois: botão direito na barra > aba **Personagem**. Lá dá para trocar de
-personagem, criar, renomear, apagar e **Trocar vocação/magias**.
+Para mudar depois: botão direito na barra > aba **Personagem**. Lá ficam **Trocar
+personagem** (lista dos salvos), criar, renomear, apagar e **Trocar vocação/magias**.
 
 ### Buffs
 
@@ -175,8 +177,9 @@ print da tela e o `diagnostico.txt`.
   lentos não contam.
 - **Buffs junto das skills:** uma janela por barra, alinhada a ela (acima na horizontal,
   ao lado na vertical). O fundo usa uma *color key* (`LWA_COLORKEY`, cor `#ff00fe`), então
-  só os ícones são visíveis e os cliques atravessam o resto. Buffs sem skill, ou no modo só
-  buffs, vão para uma janelinha solta e arrastável.
+  só os ícones são visíveis e os cliques atravessam o resto. Buffs sem skill vão para uma
+  janelinha solta e arrastável. No modo só buffs, ela vira uma caixa fixa com título, que
+  fica na tela mesmo sem buff ativo.
 - **Diagnóstico:** o programa registra a inicialização e qualquer erro, inclusive
   travamentos graves (`faulthandler`), em `diagnostico.txt`. No `.exe`, que não tem janela
   preta, um erro fatal também aparece numa caixa de mensagem.

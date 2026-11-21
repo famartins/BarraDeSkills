@@ -11,7 +11,7 @@ import tkinter as tk
 from ctypes import wintypes
 
 import mss
-from PIL import Image, ImageTk
+from PIL import Image, ImageDraw, ImageFont, ImageTk
 
 from buffcore import buff_time_text
 
@@ -316,6 +316,27 @@ class Calibrator:
 # Buffs: janela com os buffs ativos e tooltip
 # --------------------------------------------------------------------------
 WARN_COLOR = "#e0302a"   # moldura do buff que esta acabando
+BOX_BORDER = "#6b5a48"   # caixa do modo so buffs
+BOX_TITLE = "#f2c75c"
+BOX_DIM = "#8a8070"
+BOX_CELL = "#24201b"
+_FONTS = {}
+
+
+def _font(size, bold=False):
+    """Fonte Segoe UI do Windows (ou a padrao do Pillow, se nao achar)."""
+    key = (size, bold)
+    if key not in _FONTS:
+        try:
+            _FONTS[key] = ImageFont.truetype("segoeuib.ttf" if bold else "segoeui.ttf", size)
+        except OSError:
+            _FONTS[key] = ImageFont.load_default(size)
+    return _FONTS[key]
+
+
+def _text_w(text, font):
+    left, _top, right, _bottom = font.getbbox(text)
+    return right - left
 
 
 class BuffWindow:
@@ -397,9 +418,15 @@ class BuffWindow:
     def vertical(self):
         return self.bar is not None and self.bar.vertical()
 
+    def boxed(self):
+        """Modo so buffs: a janelinha solta vira uma caixa fixa com titulo, que fica
+        na tela mesmo sem nenhum buff ativo."""
+        return self.bar is None and bool(self.app.cfg.get("only_buffs"))
+
     def update(self, items, visible, now):
         """items = [(buff, indice_da_skill_nesta_barra_ou_None)] dos buffs ativos."""
-        if not visible or not items:
+        boxed = self.boxed()
+        if not visible or (not items and not boxed):
             self.hide()
             return
         cfg = self.app.cfg
@@ -408,9 +435,12 @@ class BuffWindow:
         length = self.bar.bar_length if self.bar else 0
         key = (tuple((b["file"], s) for b, s in items), float(cfg["zoom"]),
                float(cfg["buff_zoom"]), int(cfg["gap"]), centers, length,
-               self.vertical(), warn)
+               self.vertical(), warn, boxed, cfg.get("profile"))
         if key != self.key:
-            self.rebuild(items, warn, key)
+            if boxed:
+                self.rebuild_box(items, warn, key)
+            else:
+                self.rebuild(items, warn, key)
         self.show()
         if self.linked or not cfg.get("buff_pos"):
             self.apply_geometry()   # acompanha a barra
@@ -482,6 +512,66 @@ class BuffWindow:
         self.photo = ImageTk.PhotoImage(strip)
         self.label.configure(image=self.photo)
         self.size = strip.size
+        self.key = key
+        self.set_hover(self.hover if self.hover is not None and
+                       self.hover < len(self.slots) else None)
+        self.apply_geometry()
+
+    def rebuild_box(self, items, warn, key):
+        """Caixa do modo so buffs: titulo com o personagem e os buffs ativos em fila."""
+        cfg = self.app.cfg
+        zoom = float(cfg["zoom"])
+        z = zoom * float(cfg["buff_zoom"])
+        gap = max(3, int(cfg["gap"]))
+        pad = max(1, round(2 * zoom))
+        margin = max(6, round(8 * zoom))
+        title_font = _font(max(11, round(12 * zoom)), bold=True)
+        note_font = _font(max(10, round(11 * zoom)))
+
+        cells = []
+        for (b, _s), w_state in zip(items, warn):
+            w, h = b["img"].size
+            sw, sh = max(1, round(w * z)), max(1, round(h * z))
+            icon = b["img"].resize((sw, sh), RESAMPLE) if (sw, sh) != (w, h) else b["img"]
+            if w_state == 2:
+                icon = Image.blend(icon, Image.new("RGB", icon.size, "black"), 0.7)
+            cells.append((icon, b, w_state))
+
+        profile = cfg.get("profile") or ""
+        title = "BUFFS" + ("  ·  %s" % profile if profile else "")
+        empty = "nenhum buff ativo"
+        tw = _text_w(title, title_font)
+        header_h = title_font.size + 10
+        if cells:
+            row_w = sum(i.width + 2 * pad for i, _b, _w in cells) + gap * (len(cells) - 1)
+            row_h = max(i.height for i, _b, _w in cells) + 2 * pad
+        else:
+            row_w, row_h = _text_w(empty, note_font), note_font.size + 8
+        w = max(row_w, tw, round(110 * zoom)) + 2 * margin
+        h = margin + header_h + row_h + margin
+        box = Image.new("RGB", (w, h), cfg["bg"])
+        d = ImageDraw.Draw(box)
+        d.rectangle((0, 0, w - 1, h - 1), outline=BOX_BORDER)
+        d.text((margin, margin - 2), title, fill=BOX_TITLE, font=title_font)
+        line_y = margin + header_h - 5
+        d.line((margin, line_y, w - margin, line_y), fill=BOX_BORDER)
+
+        self.slots = []
+        x, y0 = margin, margin + header_h
+        if not cells:
+            d.text((margin, y0 + 2), empty, fill=BOX_DIM, font=note_font)
+        for icon, b, w_state in cells:
+            cw, ch = icon.width + 2 * pad, icon.height + 2 * pad
+            y = y0 + (row_h - ch) // 2
+            box.paste(WARN_COLOR if w_state else BOX_CELL, (x, y, x + cw, y + ch))
+            box.paste(icon, (x + pad, y + pad))
+            self.slots.append((x, x + cw, b))
+            x += cw + gap
+        self.linked = False
+        self.x_off = 0
+        self.photo = ImageTk.PhotoImage(box)
+        self.label.configure(image=self.photo)
+        self.size = box.size
         self.key = key
         self.set_hover(self.hover if self.hover is not None and
                        self.hover < len(self.slots) else None)

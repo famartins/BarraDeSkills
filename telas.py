@@ -243,8 +243,9 @@ class Wizard(Window):
         page = ctk.CTkFrame(self, fg_color="transparent")
         self.set_page(page, "personagem")
         self.header(page, "Quem vai jogar?",
-                    "Cada personagem guarda a sua vocação, barras e buffs. Escolha um ou "
-                    "crie um novo com o nome do personagem.")
+                    "Personagens salvos: cada um guarda a sua vocação, barras e buffs. "
+                    "Clique em Usar para jogar com ele, ou crie um novo com o nome do "
+                    "personagem.")
         grid = ctk.CTkScrollableFrame(page, fg_color="transparent")
         grid.pack(fill="both", expand=True, pady=(16, 0))
         cfg = self.app.cfg
@@ -273,8 +274,9 @@ class Wizard(Window):
         foot.pack(fill="x", side="bottom", pady=(10, 0))
         ctk.CTkLabel(foot, text="Dados e imagens: Bloodpedia (bloodpedia.vercel.app)",
                      font=F(11), text_color=DIM).pack(side="left")
-        if config.is_configured(cfg):
-            ghost_button(foot, "Fechar", self.close, width=110).pack(side="right")
+        if config.is_configured(cfg) and cfg.get("profile"):
+            ghost_button(foot, "Continuar com %s" % cfg["profile"], self.close,
+                         width=220).pack(side="right")
 
     def _profile_card(self, parent, name, data):
         card = ctk.CTkFrame(parent, width=210, height=250, fg_color=CARD, corner_radius=14,
@@ -287,8 +289,11 @@ class Wizard(Window):
                            image=cimg(art, fit(art, (150, 120))) if art else None)
         pic.pack(pady=(14, 6))
         active = name == self.app.cfg["profile"]
-        ctk.CTkLabel(card, text=name + ("  ●" if active else ""), font=F(15, "bold"),
-                     text_color=TEXT, wraplength=190).pack()
+        ctk.CTkLabel(card, text=name, font=F(15, "bold"), text_color=TEXT,
+                     wraplength=190).pack()
+        if active:
+            ctk.CTkLabel(card, text="último usado", font=F(10), text_color=OK,
+                         height=14).pack()
         n = sum(len(b["regions"]) for b in data.get("bars", []))
         info = ("%s · %d magias" % (voc["nome"], n)) if voc else (
             "%d skills" % n if n else "Ainda não configurado")
@@ -881,19 +886,21 @@ class Settings(Window):
     def build_personagem(self, tab):
         cfg = self.app.cfg
         row = ctk.CTkFrame(tab, fg_color="transparent")
-        row.pack(fill="x", pady=(4, 8))
-        ctk.CTkLabel(row, text="Personagem", font=F(13), text_color=TEXT).pack(side="left")
-        menu = ctk.CTkOptionMenu(row, values=config.profile_names(cfg), font=F(13),
-                                 fg_color=CARD_HOVER, button_color=ACCENT,
-                                 button_hover_color=ACCENT_HOVER, width=220,
-                                 command=self.switch)
-        menu.set(cfg["profile"])
-        menu.pack(side="right")
+        row.pack(fill="x", pady=(4, 10))
+        box = ctk.CTkFrame(row, fg_color="transparent")
+        box.pack(side="left")
+        ctk.CTkLabel(box, text="Jogando com", font=F(12), text_color=DIM, anchor="w"
+                     ).pack(fill="x")
+        ctk.CTkLabel(box, text=cfg.get("profile") or "—", font=F(20, "bold"),
+                     text_color=TEXT, anchor="w").pack(fill="x")
+        n = len(cfg["profiles"])
+        accent_button(row, "Trocar personagem (%d salvo%s)" % (n, "" if n == 1 else "s"),
+                      self.app.open_wizard, width=240).pack(side="right")
 
         btns = ctk.CTkFrame(tab, fg_color="transparent")
         btns.pack(fill="x")
-        accent_button(btns, "+ Novo personagem", self.new_profile, height=32
-                      ).pack(side="left", fill="x", expand=True, padx=(0, 4))
+        ghost_button(btns, "+ Novo personagem", self.new_profile
+                     ).pack(side="left", fill="x", expand=True, padx=(0, 4))
         ghost_button(btns, "Renomear", self.rename).pack(side="left", fill="x", expand=True,
                                                           padx=4)
         ghost_button(btns, "Apagar", self.delete).pack(side="left", fill="x", expand=True,
@@ -907,14 +914,19 @@ class Settings(Window):
             ctk.CTkLabel(card, text="", image=cimg(art, fit(art, (70, 90)))
                          ).pack(side="left", padx=12, pady=10)
         bars = [b for b in cfg["bars"] if b["regions"]]
-        txt = voc["nome"] if voc else "Sem vocação"
-        txt += "\n" + ("   ".join("Barra %d: %d magias" % (i + 1, len(b["regions"]))
-                                  for i, b in enumerate(bars)) or "Nenhuma barra")
-        ctk.CTkLabel(card, text=txt, font=F(13, "bold"), text_color=TEXT, justify="left"
-                     ).pack(side="left", padx=12, pady=12)
-        accent_button(card, "Trocar vocação/magias",
-                      lambda: self.app.open_wizard(start_at="vocacao"),
-                      width=190, height=32).pack(side="right", padx=10)
+        info = ctk.CTkFrame(card, fg_color="transparent")
+        info.pack(side="left", padx=12, pady=12)
+        ctk.CTkLabel(info, text="%s  ·  %s" % (cfg.get("profile") or "—",
+                                              voc["nome"] if voc else "sem vocação"),
+                     font=F(15, "bold"), text_color=TEXT, anchor="w").pack(fill="x")
+        txt = ("   ".join("Barra %d: %d magias" % (i + 1, len(b["regions"]))
+                          for i, b in enumerate(bars)) or "Nenhuma barra")
+        if cfg.get("only_buffs"):
+            txt += "   (só buffs)"
+        ctk.CTkLabel(info, text=txt, font=F(12), text_color=DIM, anchor="w").pack(fill="x")
+        ghost_button(card, "Trocar vocação/magias",
+                     lambda: self.app.open_wizard(start_at="vocacao"),
+                     width=190).pack(side="right", padx=10)
 
         sw = ctk.CTkSwitch(tab, text="Só buffs: esconder as barras de skills e mostrar só os "
                            "buffs numa janelinha", font=F(12), progress_color=ACCENT,
@@ -922,14 +934,6 @@ class Settings(Window):
         if cfg.get("only_buffs"):
             sw.select()
         sw.pack(anchor="w", pady=(4, 0))
-
-    def switch(self, name):
-        if name != self.app.cfg["profile"]:
-            self.app.switch_profile(name)
-            if self.app.needs_wizard():
-                self.app.open_wizard(start_at="vocacao")
-            else:
-                self.reopen("Personagem")
 
     def new_profile(self):
         name = ask_text(self, "Novo personagem", "Nome do personagem:")

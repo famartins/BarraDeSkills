@@ -139,6 +139,7 @@ class SkillBar:
         self.bars = []            # overlay.Bar de cada barra com skills
         self.cast_detectors = []  # um CastDetector por skill (indice global)
         self.paused = False
+        self.choosing = False     # tela inicial de escolha do personagem aberta
         self.settings = None      # telas.Settings aberta
         self.wizard = None        # telas.Wizard aberto
         self.hk = {}
@@ -169,7 +170,10 @@ class SkillBar:
             self.calibrate()
         self.build_bars()
         self.root.update()
-        if self.needs_wizard():
+        # ao abrir, pergunta qual personagem usar (ou abre o assistente no 1o uso);
+        # nada aparece por cima do jogo ate escolher
+        if self.needs_wizard() or self.cfg["profiles"]:
+            self.choosing = True
             self.root.after(100, self.open_wizard)
         self.tick()
         self.poll_hotkeys()
@@ -303,7 +307,7 @@ class SkillBar:
     # -- desenho das barras --
     def tick(self):
         t0 = time.perf_counter()
-        if not self.paused and self.bar_visible and self.bars:
+        if not self.paused and not self.choosing and self.bar_visible and self.bars:
             try:
                 self.render()
             except Exception as exc:  # nao deixa o programa cair por um frame ruim
@@ -440,6 +444,9 @@ class SkillBar:
 
     def scan_buffs(self):
         now = time.monotonic()
+        if self.choosing:
+            self.show_buffs([], now, visible=False)
+            return
         area = self.cfg.get("buff_area")
         if not area or not self.buffs or not self.bar_visible:
             if area and self.buffs:
@@ -461,9 +468,9 @@ class SkillBar:
         self.warn_sound(active, now)
         self.show_buffs(active, now)
 
-    def show_buffs(self, active, now):
+    def show_buffs(self, active, now, visible=True):
         """Distribui os buffs ativos: junto da skill (na barra dela) ou soltos."""
-        visible = self.bar_visible
+        visible = visible and self.bar_visible
         if self.cfg.get("only_buffs") or not self.bars:
             for bar in self.bars:
                 bar.buff_win.update([], False, now)
@@ -710,6 +717,7 @@ class SkillBar:
 
     def wizard_closed(self, finished):
         self.wizard = None
+        self.choosing = False     # fechou a escolha: segue com o personagem ativo
         if not config.is_configured(self.cfg):
             others = [n for n in config.profile_names(self.cfg) if n != self.cfg["profile"]
                       and config.is_configured(self.cfg["profiles"][n])]
