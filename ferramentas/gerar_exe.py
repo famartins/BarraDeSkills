@@ -16,6 +16,7 @@ gerar menos alarme falso de antivirus.
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 import zipfile
@@ -24,6 +25,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD = os.path.join(ROOT, "build")
 DIST = os.path.join(ROOT, "dist")
 NAME = "BarraDeSkills"
+# arquivos do usuario que o .exe cria ao lado dele (nunca vao no ZIP)
+USER_FILES = ("skillbar_config.json", "buffs", "cache", "diagnostico.txt")
 
 LEIA_ME = """Barra de Skills {version} - Bloodstone
 
@@ -79,17 +82,38 @@ def main():
            "--add-data", "%s%sdados" % (os.path.join(ROOT, "dados"), os.pathsep),
            "--collect-data", "customtkinter",
            os.path.join(ROOT, "skillbar.py")]
-    print(" ".join(cmd))
-    subprocess.check_call(cmd, cwd=ROOT)
-
     app_dir = os.path.join(DIST, NAME)
+    # quem roda o .exe direto de dist/ tem a configuracao la dentro: guarda antes de
+    # o PyInstaller apagar a pasta e devolve depois
+    keep = os.path.join(BUILD, "preservar")
+    shutil.rmtree(keep, ignore_errors=True)
+    os.makedirs(keep)
+    for item in USER_FILES:
+        src = os.path.join(app_dir, item)
+        if os.path.exists(src):
+            shutil.move(src, os.path.join(keep, item))
+            print("guardado:", item)
+    try:
+        print(" ".join(cmd))
+        subprocess.check_call(cmd, cwd=ROOT)
+    finally:
+        os.makedirs(app_dir, exist_ok=True)
+        for item in os.listdir(keep):
+            dst = os.path.join(app_dir, item)
+            if not os.path.exists(dst):
+                shutil.move(os.path.join(keep, item), dst)
+                print("devolvido:", item)
+
     with open(os.path.join(app_dir, "LEIA-ME.txt"), "w", encoding="utf-8") as f:
         f.write(LEIA_ME.format(version=ver, repo="https://github.com/famartins/BarraDeSkills"))
     zip_path = os.path.join(DIST, "%s-v%s-windows.zip" % (NAME, ver))
     if os.path.exists(zip_path):
         os.remove(zip_path)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-        for folder, _dirs, files in os.walk(app_dir):
+        for folder, dirs, files in os.walk(app_dir):
+            if folder == app_dir:   # nunca leva a configuracao/buffs de quem gerou
+                dirs[:] = [d for d in dirs if d not in USER_FILES]
+                files = [f for f in files if f not in USER_FILES]
             for fn in files:
                 full = os.path.join(folder, fn)
                 z.write(full, os.path.relpath(full, DIST))
