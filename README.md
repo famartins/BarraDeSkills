@@ -68,6 +68,18 @@ Abra o jogo em janela e abra o programa. Um assistente pede:
 Recomendado: botão direito na barra > aba **Jogo** > **Definir janela do jogo**, para as
 barras sumirem quando você trocar de programa.
 
+**Ícone perto do relógio:** o programa fica no ícone da bandeja do Windows, perto do
+relógio. Fechar as janelas não o encerra. Clique com o botão direito no ícone para abrir
+**Configurações**, **Trocar personagem** ou **Sair**. Se você abrir o programa de novo, ele
+não abre uma segunda cópia: só traz para frente a que já está aberta.
+
+**Abrir com o Windows:** na aba **Jogo** (ou no menu do ícone), ligue **Abrir com o
+Windows**. O programa fica esperando no ícone e mostra a escolha de personagem quando o
+jogo abre.
+
+**Janela do jogo mudou de lugar?** O programa percebe e ajusta sozinho as posições das
+skills e da área dos buffs. Dá para desligar isso na aba **Jogo**.
+
 Para mudar depois: botão direito na barra > aba **Personagem**. Lá ficam **Trocar
 personagem** (lista dos salvos), criar, renomear, apagar e **Trocar vocação/magias**.
 
@@ -104,6 +116,7 @@ restante.
 | Configurações | Botão direito na barra ou **Ctrl+Alt+F11** |
 | Click-through (cliques atravessam as barras) | **Ctrl+Alt+F10** |
 | Cadastrar buff | **Ctrl+Alt+F12** |
+| Configurações, trocar personagem, sair | Botão direito no ícone perto do relógio |
 
 Nas configurações (aba **Barras**) também ficam **opacidade**, zoom, espaço entre ícones,
 atualizações por segundo e a orientação de cada barra.
@@ -114,7 +127,7 @@ atualizações por segundo e a orientação de cada barra.
 |---|---|
 | O programa não abre ou fecha sozinho | Veja o **`diagnostico.txt`**, criado na pasta do programa, e mande-o numa issue. Se o arquivo nem for criado, o Windows ou o antivírus bloqueou o programa: botão direito no ZIP > **Propriedades** > marque **Desbloquear**, extraia de novo e libere a pasta no antivírus |
 | Aviso "O Windows protegeu o computador" | **Mais informações** > **Executar assim mesmo** |
-| Ícones errados depois de mover ou redimensionar o jogo | Configurações > **Trocar vocação/magias** > **Procurar de novo** |
+| Ícones errados depois de mover o jogo | O ajuste é automático (aba **Jogo** > **Acompanhar a janela do jogo**). Se ainda estiverem errados, ou se o tamanho da interface mudou: **Trocar vocação/magias** > **Procurar de novo** |
 | O assistente não acha uma magia | Use **Marcar**. Se a magia ainda não foi aprendida ou está bloqueada, o ícone fica diferente |
 | As imagens da wiki não aparecem | Elas são baixadas na primeira vez. Confira a internet. Dá para continuar sem elas |
 | A barra não aparece por cima do jogo | Use modo janela ou janela sem borda, não tela cheia exclusiva |
@@ -180,9 +193,23 @@ print da tela e o `diagnostico.txt`.
   só os ícones são visíveis e os cliques atravessam o resto. Buffs sem skill vão para uma
   janelinha solta e arrastável. No modo só buffs, ela vira uma caixa fixa com título, que
   fica na tela mesmo sem buff ativo.
-- **Diagnóstico:** o programa registra a inicialização e qualquer erro, inclusive
-  travamentos graves (`faulthandler`), em `diagnostico.txt`. No `.exe`, que não tem janela
-  preta, um erro fatal também aparece numa caixa de mensagem.
+- **Diagnóstico:** o programa registra a inicialização, os eventos dos buffs e qualquer
+  erro, inclusive travamentos graves (`faulthandler`), em `diagnostico.txt`. Passando de
+  512 KB, o arquivo é encurtado para as últimas 2.000 linhas. No `.exe`, que não tem
+  janela preta, um erro fatal também aparece numa caixa de mensagem.
+- **Uma cópia só** (`sistema.py`): a primeira cópia cria um *mutex* nomeado. As
+  seguintes percebem, sinalizam um evento nomeado, que faz a primeira vir para frente, e
+  fecham.
+- **Bandeja:** ícone com [`pystray`](https://github.com/moses-palmer/pystray), numa
+  thread própria. Os cliques viram pedidos numa fila que o loop do Tk lê 4× por segundo.
+- **Acompanhar a janela do jogo:** 4× por segundo, o programa localiza a janela do jogo
+  (pelo executável definido ou por "BloodStone" no título) e lê a origem da área interna
+  (`GetClientRect` + `ClientToScreen`). Se ela andou, as regiões das skills (de todos os
+  personagens), a barra lateral e a área dos buffs são deslocadas pela mesma diferença. A
+  referência fica em `game_anchor`.
+- **Abrir com o Windows:** valor `BarraDeSkills` em
+  `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, sem precisar de administrador,
+  com o argumento `--esperar`.
 
 ### Arquivos
 
@@ -195,6 +222,7 @@ print da tela e o `diagnostico.txt`.
 | `wiki.py` | Carrega `dados/vocacoes.json` e mantém o cache de imagens |
 | `localizar.py` | Acha as magias na barra lateral do jogo |
 | `buffcore.py` | Busca de ícone, cronômetro, detecção de uso da skill e área de busca |
+| `sistema.py` | Windows: cópia única, ícone na bandeja, janela do jogo, abrir com o Windows |
 | `dados/` | `vocacoes.json` (gerado da Bloodpedia) e `icone.ico` |
 | `ferramentas/atualizar_wiki.py` | Regera o `vocacoes.json` quando a wiki mudar |
 | `ferramentas/gerar_exe.py` | Gera o executável e o ZIP para Releases |
@@ -225,6 +253,7 @@ BarraDeSkills.exe (ou python skillbar.py)    inicia
   --monitor 2     usa o monitor 2 nas telas de marcação
   --janelas       lista as janelas abertas (executável e título)
   --jogo X.exe    só mostra as barras com X.exe em primeiro plano ("" desativa)
+  --esperar       fica no ícone perto do relógio até o jogo abrir
 ```
 
 ### Configuração (`skillbar_config.json`)
@@ -245,6 +274,7 @@ BarraDeSkills.exe (ou python skillbar.py)    inicia
 | `buff_threshold` | `14` | Tolerância do reconhecimento (menor = mais exato) |
 | `warn_seconds` / `warn_sound` | `10` / `false` | Piscar nos últimos N segundos (0 = nunca) e apito |
 | `profile` / `profiles` | `""` / `{}` | Personagem ativo e os dados de cada personagem |
+| `track_game` / `game_anchor` | `true` / `null` | Acompanhar a janela do jogo e a posição de referência dela |
 
 **De cada personagem** (no nível de cima para o ativo e em `profiles`):
 

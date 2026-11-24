@@ -81,6 +81,7 @@ def main():
            "--specpath", BUILD,
            "--add-data", "%s%sdados" % (os.path.join(ROOT, "dados"), os.pathsep),
            "--collect-data", "customtkinter",
+           "--hidden-import", "pystray._win32",
            os.path.join(ROOT, "skillbar.py")]
     app_dir = os.path.join(DIST, NAME)
     # quem roda o .exe direto de dist/ tem a configuracao la dentro: guarda antes de

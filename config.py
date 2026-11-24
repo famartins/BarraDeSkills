@@ -55,6 +55,8 @@ DEFAULTS = {
     "buff_zoom": 1.5,          # ampliacao extra dos icones de buff (eles sao pequenos)
     "warn_seconds": 10,        # buff pisca nos ultimos N segundos (0 = nunca)
     "warn_sound": False,       # apito quando o buff comeca a piscar
+    "track_game": True,        # acompanha a janela do jogo quando ela se move
+    "game_anchor": None,       # [x, y] da area do jogo quando as posicoes foram marcadas
     "profile": "",             # personagem ativo
     "profiles": {},            # {nome: {chaves de PROFILE_DEFAULTS}}
 }
@@ -178,6 +180,26 @@ def bar_offsets(cfg):
         offs.append(n)
         n += len(bar["regions"])
     return offs
+
+
+def shift_positions(cfg, dx, dy):
+    """A janela do jogo andou (dx, dy): desloca tudo o que foi marcado nela (skills
+    de TODOS os personagens, barra lateral e area dos buffs). As posicoes das barras
+    na tela (onde voce as arrastou) ficam onde estao."""
+    def move(rect):
+        if rect:
+            rect[0] += dx
+            rect[1] += dy
+
+    bar_lists = [cfg.get("bars", [])]
+    bar_lists += [p.get("bars", []) for name, p in cfg["profiles"].items()
+                  if name != cfg.get("profile")]   # o ativo ja esta em cfg["bars"]
+    for bars in bar_lists:
+        for bar in bars:
+            for r in bar.get("regions", []):
+                move(r)
+    move(cfg.get("sidebar_area"))
+    move(cfg.get("buff_area"))
 
 
 def has_skills(cfg):

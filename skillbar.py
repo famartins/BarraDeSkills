@@ -30,6 +30,7 @@ magias na tela), buffcore.py (reconhecimento e cronometro dos buffs).
 
 import argparse
 import os
+import queue
 import sys
 import threading
 import time
@@ -51,16 +52,37 @@ def log_path():
         os.path.join(BASE_DIR, "diagnostico.txt") if FROZEN else None)
 
 
+LOG_MAX_BYTES = 512 * 1024   # passou disso, o diagnostico.txt e encurtado
+LOG_KEEP_LINES = 2000         # ... para as ultimas 2000 linhas
+
+
+def trim_log(path, max_bytes=LOG_MAX_BYTES, keep=LOG_KEEP_LINES):
+    """Mantem o diagnostico.txt pequeno: guarda so as linhas mais recentes."""
+    try:
+        if os.path.getsize(path) <= max_bytes:
+            return
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()[-keep:]
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("(diagnostico encurtado: so as linhas mais recentes)\n")
+            f.writelines(lines)
+    except OSError:
+        pass
+
+
 def log_error(text):
-    """Acrescenta uma linha ao diagnostico.txt."""
+    """Acrescenta uma linha ao diagnostico.txt (com data e hora)."""
     path = log_path()
     if not path:
         return
     try:
         with open(path, "a", encoding="utf-8") as f:
-            f.write(time.strftime("[%H:%M:%S] ") + text.rstrip() + "\n")
+            f.write(time.strftime("[%d/%m %H:%M:%S] ") + text.rstrip() + "\n")
     except OSError:
-        pass
+        return
+    log_error.count = getattr(log_error, "count", 0) + 1
+    if log_error.count % 200 == 0:       # confere o tamanho de vez em quando
+        trim_log(path)
 
 
 try:
@@ -70,6 +92,7 @@ try:
     import mss
     import numpy as np
     from PIL import Image
+    import sistema
     import telas
     import wiki
     from buffcore import (BuffTracker, CastDetector, confirm_casts, expand_buff_area,
@@ -123,12 +146,17 @@ DEFAULTS = config.DEFAULTS
 # Programa
 # --------------------------------------------------------------------------
 class SkillBar:
-    def __init__(self, force_calibrate=False, monitor=None):
+    def __init__(self, force_calibrate=False, monitor=None, wait_game=False, instance=None):
         self.cfg = load_config()
         if monitor:
             self.cfg["monitor"] = monitor
             save_config(self.cfg)
         self.force_calibrate = force_calibrate
+        self.instance = instance      # sistema.SingleInstance (aviso de 2a copia)
+        self.waiting = wait_game      # aberto com o Windows: espera o jogo abrir
+        self.requests = queue.Queue() # pedidos do icone da bandeja (outra thread)
+        self.tray = None
+        self.game_hwnd = None
 
         # janela raiz escondida: as barras e as telas sao janelas filhas dela
         self.root = tk.Tk()
@@ -172,11 +200,17 @@ class SkillBar:
             self.calibrate()
         self.build_bars()
         self.root.update()
-        # ao abrir, pergunta qual personagem usar (ou abre o assistente no 1o uso);
-        # nada aparece por cima do jogo ate escolher
-        if self.needs_wizard() or self.cfg["profiles"]:
+        self.start_tray()
+        if self.waiting:
+            # aberto com o Windows: fica so na bandeja ate o jogo abrir
+            self.choosing = True
+            log_error("Esperando o jogo abrir")
+        elif self.needs_wizard() or self.cfg["profiles"]:
+            # ao abrir, pergunta qual personagem usar (ou abre o assistente no 1o uso);
+            # nada aparece por cima do jogo ate escolher
             self.choosing = True
             self.root.after(100, self.open_wizard)
+        self.poll_system()
         self.tick()
         self.poll_hotkeys()
         self.keep_on_top()
@@ -194,7 +228,94 @@ class SkillBar:
 
     def quit(self):
         save_config(self.cfg)
+        if self.tray is not None:
+            self.tray.stop()
         self.root.quit()
+
+    # -- bandeja, segunda copia, janela do jogo --
+    def start_tray(self):
+        try:
+            image = Image.open(telas.ICON_PATH)
+        except OSError:
+            image = Image.new("RGB", (64, 64), "#b3261e")
+        self.tray = sistema.Tray(image, self.requests, [
+            ("Configurações", "config", None),
+            ("Trocar personagem", "personagem", None),
+            ("-", None, None),
+            ("Abrir com o Windows (espera o jogo)", "autostart",
+             sistema.autostart_enabled),
+            ("-", None, None),
+            ("Sair", "sair", None),
+        ])
+        self.tray.start()
+
+    def poll_system(self):
+        """4x por segundo: pedidos da bandeja, 2a copia aberta, janela do jogo."""
+        try:
+            while True:
+                req = self.requests.get_nowait()
+                if req == "config":
+                    self.open_settings()
+                elif req == "personagem":
+                    self.open_wizard()
+                elif req == "autostart":
+                    self.set_autostart(not sistema.autostart_enabled())
+                elif req == "sair":
+                    self.quit()
+                    return
+        except queue.Empty:
+            pass
+        if self.instance is not None and self.instance.woken():
+            # alguem abriu o programa de novo: mostra esta copia em vez de abrir outra
+            self.waiting = False
+            if self.choosing or self.needs_wizard():
+                self.open_wizard()
+            else:
+                self.open_settings()
+        try:
+            self.track_game()
+        except Exception as exc:
+            log_error("Erro ao acompanhar a janela do jogo: %r" % exc)
+        self.root.after(250, self.poll_system)
+
+    def track_game(self):
+        """Acha a janela do jogo; se ela andou, desloca as posicoes marcadas nela.
+        No modo 'esperar o jogo', abre a escolha de personagem quando o jogo abre."""
+        rect = sistema.client_rect(self.game_hwnd) if self.game_hwnd else None
+        if rect is None:
+            self.game_hwnd = sistema.find_game_window(self.cfg.get("game_process"),
+                                                      self.cfg.get("game_title"))
+            rect = sistema.client_rect(self.game_hwnd) if self.game_hwnd else None
+        if rect is None:
+            return
+        if self.waiting:
+            self.waiting = False
+            log_error("Jogo aberto: mostrando a escolha de personagem")
+            self.open_wizard()
+        if not self.cfg.get("track_game") or self.paused:
+            return
+        anchor = self.cfg.get("game_anchor")
+        if not anchor:
+            self.cfg["game_anchor"] = [rect[0], rect[1]]
+            save_config(self.cfg)
+            return
+        dx, dy = rect[0] - anchor[0], rect[1] - anchor[1]
+        if dx or dy:
+            config.shift_positions(self.cfg, dx, dy)
+            self.cfg["game_anchor"] = [rect[0], rect[1]]
+            save_config(self.cfg)
+            log_error("Janela do jogo andou %+d, %+d px: posicoes ajustadas" % (dx, dy))
+
+    def set_autostart(self, on):
+        ok = sistema.set_autostart(on)
+        if not ok:
+            log_error("Nao consegui mudar o 'abrir com o Windows'")
+        if alive(self.settings):
+            self.settings.sync_autostart()
+        if ok and on and self.tray is not None:
+            self.tray.notify("Vai abrir junto com o Windows e esperar o jogo, aqui na "
+                             "bandeja.")
+        return ok
 
     def build_bars(self):
         """(Re)cria as janelas das barras a partir de cfg["bars"]."""
@@ -830,6 +951,8 @@ def main():
     parser.add_argument("--jogo", metavar="PROGRAMA.EXE",
                         help="mostra as barras so quando este programa estiver em "
                              "primeiro plano (use '' para desativar)")
+    parser.add_argument("--esperar", action="store_true",
+                        help="fica na bandeja ate o jogo abrir (usado ao abrir com o Windows)")
     args = parser.parse_args()
 
     enable_dpi_awareness()
@@ -844,7 +967,14 @@ def main():
         cfg["game_title"] = ""
         save_config(cfg)
         print("Janela do jogo definida como: %r" % (cfg["game_process"] or "(sempre visivel)"))
-    SkillBar(force_calibrate=args.calibrar, monitor=args.monitor).start()
+    instance = sistema.SingleInstance()
+    if instance.already_running:
+        # ja tem uma copia aberta: pede para ela aparecer e sai
+        instance.wake_other()
+        log_error("O programa ja estava aberto: trazendo a copia aberta para frente")
+        return
+    SkillBar(force_calibrate=args.calibrar, monitor=args.monitor, wait_game=args.esperar,
+             instance=instance).start()
 
 
 def run():
@@ -854,6 +984,7 @@ def run():
     log = log_path()
     fh = None
     if log:
+        trim_log(log)
         try:   # travamentos graves (ex.: falha no Tk) tambem vao para o arquivo
             fh = open(log, "a", encoding="utf-8")
             faulthandler.enable(fh)

@@ -20,12 +20,13 @@ from PIL import Image
 
 import config
 import localizar
+import sistema
 import wiki
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
-VERSION = "2.2"
+VERSION = "2.3"
 REPO_URL = "https://github.com/famartins/BarraDeSkills"
 ICON_PATH = os.path.join(config.RES_DIR, "dados", "icone.ico")
 
@@ -1111,6 +1112,32 @@ class Settings(Window):
         ghost_button(tab, "Mostrar sempre (desativar)",
                      lambda: self.app.clear_game_window(self.set_game_text)
                      ).pack(fill="x", pady=8)
+
+        track = ctk.CTkSwitch(
+            tab, text="Acompanhar a janela do jogo: se ela mudar de lugar, as posições das "
+            "skills e dos buffs se ajustam sozinhas", font=F(12), progress_color=ACCENT,
+            command=lambda: self._set("track_game", bool(track.get())))
+        if self.app.cfg.get("track_game", True):
+            track.select()
+        track.pack(anchor="w", pady=(14, 6))
+        self.auto_sw = ctk.CTkSwitch(
+            tab, text="Abrir com o Windows: fica no ícone perto do relógio e mostra a "
+            "escolha de personagem quando o jogo abrir", font=F(12), progress_color=ACCENT,
+            command=lambda: self.app.set_autostart(bool(self.auto_sw.get())))
+        self.sync_autostart()
+        self.auto_sw.pack(anchor="w", pady=6)
+        ctk.CTkLabel(tab, justify="left", anchor="w", font=F(11), text_color=DIM,
+                     wraplength=560, text=(
+                         "Fechar as janelas não encerra o programa: ele continua no ícone "
+                         "perto do relógio. Para sair, clique com o botão direito no ícone > "
+                         "Sair, ou use \"Sair do programa\" aqui embaixo.")
+                     ).pack(fill="x", pady=(10, 0))
+
+    def sync_autostart(self):
+        if sistema.autostart_enabled():
+            self.auto_sw.select()
+        else:
+            self.auto_sw.deselect()
 
     def set_game_text(self, text):
         try:
