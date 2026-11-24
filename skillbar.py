@@ -247,7 +247,11 @@ class SkillBar:
             ("-", None, None),
             ("Sair", "sair", None),
         ])
+        if self.tray.icon is None:
+            log_error("Icone da bandeja indisponivel (pystray nao encontrado)")
+            return
         self.tray.start()
+        log_error("Icone da bandeja ativo")
 
     def poll_system(self):
         """4x por segundo: pedidos da bandeja, 2a copia aberta, janela do jogo."""
