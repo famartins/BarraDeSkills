@@ -123,6 +123,17 @@ def load_art(voc):
     return bg.convert("RGB")
 
 
+def shortcut_feedback(app, label):
+    """Cria os atalhos e mostra o resultado em `label`."""
+    label.configure(text="Criando...", text_color=DIM)
+    label.update()
+    made = sistema.create_shortcuts(ICON_PATH)
+    if made:
+        label.configure(text="✓ Atalhos criados: procure \"Barra de Skills\"", text_color=OK)
+    else:
+        label.configure(text="Não consegui criar os atalhos", text_color=ERR)
+
+
 def ask_text(parent, title, text):
     dlg = ctk.CTkInputDialog(title=title, text=text, font=F(13),
                              button_fg_color=ACCENT, button_hover_color=ACCENT_HOVER)
@@ -744,6 +755,12 @@ class Wizard(Window):
                  "  Na primeira vez, marque a área onde os buffs aparecem (todas as linhas).")
         ctk.CTkLabel(box, justify="left", font=F(14), text_color=DIM, text=tips
                      ).pack(padx=24, pady=8)
+        sc = ctk.CTkFrame(box, fg_color="transparent")
+        sc.pack(pady=(6, 0))
+        lbl = ctk.CTkLabel(box, text="", font=F(11), text_color=DIM)
+        ghost_button(sc, "Criar atalho na Área de Trabalho e no Menu Iniciar",
+                     lambda: shortcut_feedback(self.app, lbl), width=340).pack()
+        lbl.pack()
         accent_button(box, "Fechar", self.close, width=160).pack(pady=(14, 4))
 
 
@@ -1126,6 +1143,13 @@ class Settings(Window):
             command=lambda: self.app.set_autostart(bool(self.auto_sw.get())))
         self.sync_autostart()
         self.auto_sw.pack(anchor="w", pady=6)
+        sc = ctk.CTkFrame(tab, fg_color="transparent")
+        sc.pack(fill="x", pady=(8, 0))
+        ghost_button(sc, "Criar atalho na Área de Trabalho e no Menu Iniciar",
+                     lambda: shortcut_feedback(self.app, self.shortcut_lbl)
+                     ).pack(side="left")
+        self.shortcut_lbl = ctk.CTkLabel(sc, text="", font=F(11), text_color=DIM)
+        self.shortcut_lbl.pack(side="left", padx=10)
         ctk.CTkLabel(tab, justify="left", anchor="w", font=F(11), text_color=DIM,
                      wraplength=560, text=(
                          "Fechar as janelas não encerra o programa: ele continua no ícone "

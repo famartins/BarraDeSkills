@@ -115,14 +115,63 @@ def client_rect(hwnd):
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
 
-def autostart_command():
-    """Comando que o Windows roda ao entrar: o .exe (ou pythonw + skillbar.py),
-    com --esperar (fica na bandeja ate o jogo abrir)."""
+def launch_target():
+    """(programa, argumentos, pasta) para abrir a Barra de Skills: o .exe ou, pelo
+    codigo-fonte, o pythonw (sem janela preta) com o skillbar.py."""
     if getattr(sys, "frozen", False):
-        return '"%s" --esperar' % sys.executable
+        return sys.executable, "", os.path.dirname(sys.executable)
+    folder = os.path.dirname(os.path.abspath(__file__))
     pyw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
-    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "skillbar.py")
-    return '"%s" "%s" --esperar' % (pyw if os.path.isfile(pyw) else sys.executable, script)
+    return (pyw if os.path.isfile(pyw) else sys.executable,
+            '"%s"' % os.path.join(folder, "skillbar.py"), folder)
+
+
+def autostart_command():
+    """Comando que o Windows roda ao entrar, com --esperar (fica na bandeja ate o
+    jogo abrir)."""
+    exe, args, _folder = launch_target()
+    return ('"%s" %s --esperar' % (exe, args)).replace("  ", " ")
+
+
+# PowerShell cria os atalhos (.lnk) pelo objeto WScript.Shell do Windows. Os valores
+# vao por variaveis de ambiente para nao ter problema com aspas nos caminhos.
+_SHORTCUT_PS = r"""
+$sh = New-Object -ComObject WScript.Shell
+$out = @()
+$places = @([Environment]::GetFolderPath('Desktop'),
+            (Join-Path ([Environment]::GetFolderPath('Programs')) ''))
+foreach ($dir in $places) {
+    if (-not $dir) { continue }
+    $path = Join-Path $dir ($env:BS_NAME + '.lnk')
+    $lnk = $sh.CreateShortcut($path)
+    $lnk.TargetPath = $env:BS_TARGET
+    $lnk.Arguments = $env:BS_ARGS
+    $lnk.WorkingDirectory = $env:BS_DIR
+    $lnk.IconLocation = $env:BS_ICON
+    $lnk.Description = 'Barra de Skills para Bloodstone'
+    $lnk.Save()
+    $out += $path
+}
+$out -join "`n"
+"""
+
+
+def create_shortcuts(icon_path, name="Barra de Skills"):
+    """Cria (ou atualiza) atalhos na Area de Trabalho e no Menu Iniciar.
+    Retorna a lista de atalhos criados (vazia se falhar)."""
+    import subprocess
+    exe, args, folder = launch_target()
+    env = dict(os.environ, BS_NAME=name, BS_TARGET=exe, BS_ARGS=args, BS_DIR=folder,
+               BS_ICON=icon_path if os.path.isfile(icon_path) else exe)
+    try:
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+             "-Command", _SHORTCUT_PS],
+            env=env, capture_output=True, text=True, timeout=30,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return [p for p in out.stdout.splitlines() if p.strip().lower().endswith(".lnk")]
 
 
 def autostart_enabled():
