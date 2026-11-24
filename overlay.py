@@ -45,6 +45,7 @@ WS_EX_LAYERED = 0x00080000
 WS_EX_NOACTIVATE = 0x08000000
 LWA_COLORKEY = 0x1
 LWA_ALPHA = 0x2
+WDA_NONE = 0x0
 WDA_EXCLUDEFROMCAPTURE = 0x11
 # Cor "invisivel" das janelinhas de buff: pixels exatamente desta cor ficam
 # transparentes (e os cliques atravessam). COLORREF = 0x00BBGGRR.
@@ -83,8 +84,9 @@ def style_overlay(widget, exclude_capture=True, colorkey=None, alpha=1.0):
         user32.SetLayeredWindowAttributes(hwnd, 0, a, LWA_ALPHA)
     else:
         user32.SetLayeredWindowAttributes(hwnd, colorkey, a, LWA_ALPHA | LWA_COLORKEY)
-    if exclude_capture:
-        user32.SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE)
+    # fora das capturas de tela (prints, OBS e a propria captura do programa), ou nao
+    user32.SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE if exclude_capture
+                                    else WDA_NONE)
 
 
 def key_down(vk):
@@ -392,9 +394,12 @@ class BuffWindow:
             self.shown = True
 
     def apply_alpha(self):
+        """Reaplica opacidade e 'fora das capturas' (inclusive no tooltip)."""
         if self.styled:
             style_overlay(self.win, self.app.cfg["exclude_from_capture"], KEY_COLORREF,
                           alpha=self.app.cfg["opacity"])
+        if self.tip_styled:
+            style_overlay(self.tip, self.app.cfg["exclude_from_capture"])
 
     def hide(self):
         if self.shown:

@@ -119,7 +119,8 @@ restante.
 | Configurações, trocar personagem, sair | Botão direito no ícone perto do relógio |
 
 Nas configurações (aba **Barras**) também ficam **opacidade**, zoom, espaço entre ícones,
-atualizações por segundo e a orientação de cada barra.
+atualizações por segundo, a orientação de cada barra e a opção **Mostrar as barras e buffs
+em prints e gravações**. Por padrão, as barras ficam fora dos prints (Lightshot, OBS etc.).
 
 ## Problemas comuns
 
@@ -269,7 +270,7 @@ BarraDeSkills.exe (ou python skillbar.py)    inicia
 | `zoom` / `gap` / `fps` | `1.0` / `4` / `30` | Ampliação, espaço entre ícones e atualizações por segundo |
 | `opacity` | `1.0` | Opacidade das barras e buffs (0,2 a 1,0) |
 | `click_through` | `false` | Cliques atravessam as barras |
-| `exclude_from_capture` | `true` | As barras não aparecem em capturas de tela |
+| `exclude_from_capture` | `true` | As barras não aparecem em prints e gravações (desligue para aparecerem) |
 | `game_process` / `game_title` | `""` | Executável ou trecho do título da janela do jogo |
 | `sidebar_area` | `null` | `[x, y, largura, altura]` da barra lateral de skills do jogo |
 | `buff_area` | `null` | `[x, y, largura, altura]` da área de buffs no jogo |

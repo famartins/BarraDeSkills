@@ -26,7 +26,7 @@ import wiki
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
-VERSION = "0.4"
+VERSION = "0.5"
 REPO_URL = "https://github.com/famartins/BarraDeSkills"
 ICON_PATH = os.path.join(config.RES_DIR, "dados", "icone.ico")
 
@@ -1009,6 +1009,18 @@ class Settings(Window):
             command=lambda: self.app.set_click_through(bool(self.ct_switch.get())))
         self.sync_click_through()
         self.ct_switch.pack(anchor="w", pady=(12, 6))
+        cap = ctk.CTkSwitch(
+            tab, text="Mostrar as barras e buffs em prints e gravações (Lightshot, OBS...)",
+            font=F(12), progress_color=ACCENT,
+            command=lambda: self.app.set_show_in_captures(bool(cap.get())))
+        if not self.app.cfg.get("exclude_from_capture", True):
+            cap.select()
+        cap.pack(anchor="w", pady=(6, 0))
+        ctk.CTkLabel(tab, justify="left", anchor="w", font=F(11), text_color=DIM,
+                     wraplength=560, text=(
+                         "Com isso ligado, não deixe nenhuma barra EM CIMA da barra lateral de "
+                         "skills ou da área de buffs do jogo: o programa passaria a copiar a "
+                         "própria barra em vez do jogo.")).pack(fill="x", padx=(4, 0))
         ghost_button(tab, "Recalibrar a barra 1 manualmente (marcar cada ícone na tela)",
                      self.app.recalibrate).pack(fill="x", pady=(10, 0))
 

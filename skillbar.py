@@ -351,6 +351,12 @@ class SkillBar:
         if save:
             save_config(self.cfg)
 
+    def set_show_in_captures(self, on):
+        """Mostrar (ou esconder) as barras e buffs em prints e gravacoes."""
+        self.cfg["exclude_from_capture"] = not on
+        self.apply_styles()
+        save_config(self.cfg)
+
     def toggle_click_through(self):
         self.set_click_through(not self.cfg["click_through"])
 
