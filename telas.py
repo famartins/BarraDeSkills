@@ -26,7 +26,7 @@ import wiki
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
-VERSION = "2.3"
+VERSION = "0.4"
 REPO_URL = "https://github.com/famartins/BarraDeSkills"
 ICON_PATH = os.path.join(config.RES_DIR, "dados", "icone.ico")
 

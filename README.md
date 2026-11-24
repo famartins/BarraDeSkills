@@ -243,7 +243,11 @@ arquivos de `dados/` e os do CustomTkinter vão embutidos. A versão vem de `VER
 `telas.py`.
 
 Para publicar: no GitHub, **Releases** > **Draft a new release** > crie a tag (ex.:
-`v2.1`) > anexe o ZIP > **Publish release**.
+`v0.4`) > anexe o ZIP > **Publish release**.
+
+**Versões:** enquanto o programa estiver em teste, as versões são `0.x` (0.4, 0.5...). A
+`1.0` marca o lançamento. Não marque a release como *Pre-release*: o link
+`releases/latest`, usado no README e mandado aos amigos, ignora pre-releases.
 
 ### Linha de comando
 
