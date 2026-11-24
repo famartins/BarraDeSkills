@@ -64,12 +64,14 @@ def expand_buff_area(area, iw, ih, screen):
 
 
 class CastDetector:
-    """Percebe quando uma skill e usada, olhando o brilho medio do icone dela.
+    """Percebe quando uma skill escurece, olhando o brilho medio do icone dela.
 
     No Bloodstone o icone escurece quando a skill entra em recarga e volta ao
-    normal quando ela fica pronta. Entao "skill usada" = queda BRUSCA de brilho
-    (em poucos quadros) para abaixo de `drop` x o brilho normal. Depois disso,
-    nao dispara de novo ate o brilho voltar a `recover` x o normal.
+    normal quando ela fica pronta. Uma queda BRUSCA de brilho (em poucos quadros)
+    para abaixo de `drop` x o brilho normal marca o inicio (`pending`). Se o brilho
+    voltar a `recover` x o normal antes de a queda ser confirmada (veja
+    confirm_casts), foi so um escurecimento rapido, como a recarga global que o
+    jogo aplica em todas as skills quando QUALQUER uma e usada.
     """
 
     def __init__(self, drop=0.75, recover=0.9, window=3):
@@ -79,24 +81,56 @@ class CastDetector:
         self.base = None      # brilho com a skill pronta
         self.recent = []      # ultimos quadros, para exigir uma queda brusca
         self.cooling = False
+        self.pending = None   # instante da queda ainda nao confirmada
 
-    def update(self, brightness):
-        """Recebe o brilho do quadro atual. Retorna True se a skill acabou de ser usada."""
+    def update(self, brightness, now):
+        """Recebe o brilho do quadro atual. Retorna True se o icone acabou de escurecer."""
         b = float(brightness)
-        fired = False
+        dropped = False
         if self.base is None:
             self.base = b
         elif self.cooling:
             if b >= self.base * self.recover:
                 self.cooling = False
+                self.pending = None   # voltou ao normal: nao era (mais) uma recarga
         elif b < self.base * self.drop and b < max(self.recent or [b]) * self.drop:
             self.cooling = True
-            fired = True
+            self.pending = now
+            dropped = True
         else:
             # acompanha a iluminacao normal: sobe rapido, desce devagar
             self.base += (b - self.base) * (0.3 if b > self.base else 0.02)
         self.recent = (self.recent + [b])[-self.window:]
-        return fired
+        return dropped
+
+
+def confirm_casts(detectors, now, min_dark=1.5, group_window=0.3, max_wait=8.0):
+    """Quais skills foram mesmo usadas: [(indice, instante_do_uso)].
+
+    Uma queda so vira "skill usada" quando o icone continua escuro por pelo menos
+    `min_dark` segundos E as outras skills que escureceram junto com ela (ate
+    `group_window` s de diferenca) ja voltaram ao normal. Assim a recarga global
+    (todas escurecem por instantes quando qualquer skill e usada) nao conta como
+    uso; a skill realmente usada continua escura e e confirmada logo depois.
+    Quedas que nao se resolvem em `max_wait` s sao descartadas."""
+    out = []
+    for i, d in enumerate(detectors):
+        if d.pending is None:
+            continue
+        age = now - d.pending
+        if age > max_wait:
+            d.pending = None
+            continue
+        if age < min_dark:
+            continue
+        together = any(j != i and e.pending is not None
+                       and abs(e.pending - d.pending) <= group_window
+                       for j, e in enumerate(detectors))
+        if together:
+            continue
+        out.append((i, d.pending))
+        d.pending = None
+    return out
 
 
 def fmt_time(seconds):
@@ -118,12 +152,16 @@ class BuffTracker:
 
     - Um buff continua "ativo" por `hold` segundos depois da ultima vez que foi visto
       (evita piscar quando algo, como um tooltip do jogo, cobre o icone por instantes).
+    - Se o icone some por pouco tempo (ate `flicker` s: icone piscando, tooltip
+      por cima, fila de buffs se reorganizando) e volta, o cronometro CONTINUA:
+      nao e um novo uso. Reusar a skill e percebido pelo CastDetector.
     - Se voce sai do jogo (suspend) e volta, o cronometro continua de onde estava,
       desde que a duracao configurada ainda nao tenha acabado.
     """
 
-    def __init__(self, hold=1.0):
+    def __init__(self, hold=1.0, flicker=4.0):
         self.hold = hold
+        self.flicker = flicker
         self.s = {}
 
     def suspend(self):
@@ -131,21 +169,24 @@ class BuffTracker:
             st["frozen"] = True
 
     def update(self, key, found, now, duration=0.0):
+        """Retorna "novo" quando o cronometro (re)comecou neste quadro, senao None."""
         st = self.s.setdefault(key, {"since": None, "last": None, "frozen": False})
         if not found:
-            return
+            return None
+        event = None
         was_active = st["last"] is not None and (now - st["last"]) <= self.hold
         if st["since"] is None:
             st["since"] = now
+            event = "novo"
         elif not was_active:
-            if st["frozen"]:
-                still_running = (not duration) or (now - st["since"]) < duration + 1.0
-                if not still_running:
-                    st["since"] = now
-            else:
+            still_running = (not duration) or (now - st["since"]) < duration + 1.0
+            short_gap = (now - st["last"]) <= self.flicker
+            if not (still_running and (st["frozen"] or short_gap)):
                 st["since"] = now  # sumiu de verdade e voltou: foi usado de novo
+                event = "novo"
         st["last"] = now
         st["frozen"] = False
+        return event
 
     def restart(self, key, now):
         """A skill do buff foi usada de novo: o cronometro volta ao inicio."""

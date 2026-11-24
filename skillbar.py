@@ -72,7 +72,8 @@ try:
     from PIL import Image
     import telas
     import wiki
-    from buffcore import BuffTracker, CastDetector, expand_buff_area, find_template
+    from buffcore import (BuffTracker, CastDetector, confirm_casts, expand_buff_area,
+                          find_template)
     from overlay import (BROWSERS, Bar, BuffWindow, Calibrator, enable_dpi_awareness,
                          grab_image, key_down, list_windows, user32, window_info,
                          window_title, VK_CONTROL, VK_MENU, VK_F10, VK_F11, VK_F12)
@@ -152,6 +153,7 @@ class SkillBar:
         self.tracker = BuffTracker()
         self.float_win = BuffWindow(self)   # buffs soltos / modo so buffs
         self.warned = set()       # buffs que ja apitaram nesta ativacao
+        self.prev_active = set()  # buffs ativos no ciclo anterior (para o diagnostico)
         self.buff_err = None
         self.load_buffs()
 
@@ -347,14 +349,20 @@ class SkillBar:
         if len(self.cast_detectors) != len(crops):
             self.cast_detectors = [CastDetector() for _ in crops]
         now = time.monotonic()
-        for i, (c, det) in enumerate(zip(crops, self.cast_detectors)):
-            if not det.update(np.asarray(c).mean()):
-                continue
+        for c, det in zip(crops, self.cast_detectors):
+            det.update(np.asarray(c).mean(), now)
+        # so conta como uso o escurecimento que dura e nao foi junto com as outras
+        # skills (recarga global); o tempo reinicia no instante em que escureceu
+        for i, cast_time in confirm_casts(self.cast_detectors, now):
             for b in self.buffs:
                 if (b.get("skill") == i and b.get("restart_on_cast", True)
                         and self.tracker.active(b["file"], now)):
-                    self.tracker.restart(b["file"], now)
+                    old = self.tracker.elapsed(b["file"], now)
+                    self.tracker.restart(b["file"], cast_time)
                     self.warned.discard(b["file"])
+                    log_error("Buff %s: skill usada de novo, tempo reiniciado "
+                              "(estava em %.0f s de %g s)" % (b["name"], old or 0,
+                                                              b["duration"]))
 
     # -- visibilidade: so aparece quando o jogo esta em primeiro plano --
     def game_is_active(self):
@@ -462,9 +470,16 @@ class SkillBar:
         active = []
         for b in self.buffs:
             found = find_template(arr, b["arr"], thr) is not None
-            self.tracker.update(b["file"], found, now, b["duration"])
+            if self.tracker.update(b["file"], found, now, b["duration"]) == "novo":
+                log_error("Buff %s: apareceu, contagem de %g s iniciada"
+                          % (b["name"], b["duration"]))
             if self.tracker.active(b["file"], now):
                 active.append(b)
+            elif b["file"] in self.prev_active:
+                log_error("Buff %s: sumiu depois de %.0f s (duracao configurada: %g s)"
+                          % (b["name"], self.tracker.elapsed(b["file"], now) or 0,
+                             b["duration"]))
+        self.prev_active = {b["file"] for b in active}
         self.warn_sound(active, now)
         self.show_buffs(active, now)
 
