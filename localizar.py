@@ -178,102 +178,173 @@ def find_ready(area, icon, size):
     return score, x - box[0], y - box[1]
 
 
+def has_drawing(crop, min_std=8.0):
+    """O recorte tem desenho (nao e uma cor lisa, como um slot vazio)?"""
+    box = _core_box(crop.size)
+    g = np.asarray(crop.convert("L").crop(box), dtype=np.float32)
+    return float(g.std()) >= min_std
+
+
+def _thumb(img, size):
+    """Miniatura 8x8 do miolo (para escolher rapido os icones mais parecidos)."""
+    w, h = size
+    box = _core_box((w, h))
+    return np.asarray(img.convert("RGB").resize((w, h), Image.BILINEAR).crop(box)
+                      .resize((8, 8), Image.BILINEAR), dtype=np.float32)
+
+
 class SlotTracker:
     """Acompanha onde esta cada skill do personagem na barra lateral do jogo.
 
     O jogo tem varios "Sets" de barra lateral e cada um poe as skills em lugares
-    diferentes. A cada verificacao, para cada skill com icone conhecido:
-    - continua no lugar                                 -> "ok"
-    - mudou de lugar (achada pronta em outra posicao)   -> "ok" e nova regiao
-    - nao bate mais com o icone                         -> depende do contexto
+    diferentes. A cada verificacao, cada skill com icone conhecido e avaliada de
+    novo, sem depender do que foi decidido antes:
+    - no lugar esta ela (normal ou escurecida)          -> "ok" (copia a tela)
+    - ela esta PRONTA em outra posicao                  -> "ok" e segue para la
+    - no lugar esta OUTRA skill da vocacao, pronta      -> "missing" (nao esta
+      neste Set; a barra mostra o icone dela apagado)
+    - qualquer outra coisa (recarga sem cor e com a contagem, slot vazio...)
+                                                        -> "ok" (copia a tela)
+    So vira "missing" com prova (outra skill no lugar): recarga nunca apaga a
+    skill, nem depois de trocar de Set e voltar.
 
-    Uma skill que deixa de bater SOZINHA quase sempre esta em recarga: o jogo
-    escurece e tira a cor do icone e escreve a contagem por cima, e ai ela nao
-    bate com o icone da wiki. Por isso so vira "missing" (fora deste Set, a barra
-    mostra o icone apagado) quando ha prova de que a barra lateral mudou:
-    - outra skill mudou de lugar nesta verificacao (troca de Set), ou
-    - metade ou mais das skills nao bate por `settle` segundos seguidos (outro
-      personagem; a recarga global, que escurece todas juntas, dura menos).
-    Skills em recarga confirmada (`cooldown`, do detector de uso) nao contam para
-    a maioria e so viram "missing" quando a maioria ja sumiu.
+    Outro personagem (ou tela de selecao): nenhuma skill da vocacao aparece nos
+    lugares das skills por `settle` segundos e, numa varredura da barra lateral
+    inteira, nenhuma magia da vocacao aparece pronta -> hidden() (a barra some).
+    A varredura evita esconder a barra quando todas as skills estao em recarga.
+    `others` = icones de todas as magias da vocacao (para reconhecer as outras).
     Skills sem icone conhecido ficam sempre "ok" (so copia a tela)."""
 
-    def __init__(self, icons, settle=2.5):
+    def __init__(self, icons, others=(), settle=2.5):
         self.icons = list(icons)
+        self.others = [o for o in others if o is not None]
         self.state = ["ok"] * len(self.icons)
         self.settle = settle
-        self.majority_since = None
+        self.absent_since = None
+        self.gone = False
         self._turn = 0
+        self._thumbs = {}
+        self._seen = {}          # i -> (miniatura do lugar, instante, estado, presente)
 
     def known(self):
         return [i for i, ic in enumerate(self.icons) if ic is not None]
 
-    def all_missing(self):
-        k = self.known()
-        return bool(k) and all(self.state[i] == "missing" for i in k)
+    def hidden(self):
+        """Nenhuma skill da vocacao na tela ha `settle` segundos."""
+        return self.gone
 
-    def check(self, crops, regions, sidebar=None, max_search=4, cooldown=(), now=None):
+    all_missing = hidden   # nome antigo
+
+    def _other_here(self, i, crop):
+        """Outra skill da vocacao, pronta, ocupa o lugar da skill i?"""
+        size = crop.size
+        cands = [o for o in self.others if o is not self.icons[i]]
+        if not cands or not has_drawing(crop):
+            return False
+        key = size
+        if key not in self._thumbs:
+            self._thumbs[key] = {id(o): _thumb(o, size) for o in self.others}
+        th = self._thumbs[key]
+        t = _thumb(crop, size)
+        cands.sort(key=lambda o: float(np.abs(th[id(o)] - t).mean()))
+        return any(match_score(crop, o) <= GOOD_SCORE for o in cands[:3])
+
+    def _vocation_visible(self, img, size, k=2):
+        """Alguma magia da vocacao aparece pronta na imagem da barra lateral?
+        (em meia resolucao; para na primeira encontrada)"""
+        a = np.asarray(img.convert("RGB").resize((max(1, img.width // k),
+                                                  max(1, img.height // k)),
+                                                 Image.BILINEAR), dtype=np.int16)
+        w, h = max(4, size[0] // k), max(4, size[1] // k)
+        box = _core_box((w, h))
+        for ic in self.others or [i for i in self.icons if i is not None]:
+            core = np.asarray(ic.convert("RGB").resize((w, h), Image.BILINEAR).crop(box),
+                              dtype=np.int16)
+            m = best_match(a, core, step=2, stride=1)
+            if m and m[0] <= GOOD_SCORE:
+                return True
+        return False
+
+    def check(self, crops, regions, sidebar=None, max_search=2, now=None,
+              recheck=6.0):
         """crops/regions: recorte e [x, y, w, h] de cada skill (indice global).
         sidebar: funcao que devolve (imagem_PIL, x, y) da barra lateral, chamada
-        so se precisar procurar. Procura no maximo `max_search` skills por vez
-        (primeiro as que acabaram de sair do lugar; as que ja estavam sumidas vao
-        em rodizio). cooldown: indices em recarga confirmada. now: relogio em
-        segundos. Retorna {indice: nova_regiao} das que mudaram de lugar."""
+        so se precisar procurar (no maximo `max_search` skills por vez, em
+        rodizio). now: relogio em segundos. Um lugar que nao mudou desde a ultima vez so e
+        reavaliado a cada `recheck` s (procurar na barra lateral e caro).
+        Retorna {indice: nova_regiao} das que mudaram."""
         import time
         now = time.monotonic() if now is None else now
-        cooldown = set(cooldown)
         known = self.known()
+        scores = {i: match_score(crops[i], self.icons[i]) for i in known}
+        thumbs, fresh = {}, set()
+        for i in known:
+            if scores[i] <= GOOD_SCORE:
+                continue
+            thumbs[i] = _thumb(crops[i], crops[i].size)
+            last = self._seen.get(i)
+            if (last is not None and last[0].shape == thumbs[i].shape
+                    and float(np.abs(last[0] - thumbs[i]).mean()) < 8
+                    and now - last[1] < recheck + 0.35 * (i % 6)):   # espalha
+                fresh.add(i)                   # lugar igual: vale a conclusao anterior
+        bad = [i for i in thumbs if i not in fresh]
+        if bad:
+            k = self._turn % len(bad)
+            bad = bad[k:] + bad[:k]
+        self._turn += 1
+        search = set(bad[:max_search])
         moved = {}
         side = None
-        scores = {i: match_score(crops[i], self.icons[i]) for i in known}
-        bad = [i for i in known if scores[i] > GOOD_SCORE]
-        fresh = [i for i in bad if self.state[i] == "ok" and i not in cooldown]
-        old = [i for i in bad if self.state[i] != "ok"]
-        if old:
-            k = self._turn % len(old)
-            old = old[k:] + old[:k]
-        self._turn += 1
-        search = set((fresh + old)[:max_search])
-        failing, held = [], []
+        present = False          # alguma skill da vocacao nos lugares das skills
         for i in known:
-            icon, (x, y, w, h) = self.icons[i], regions[i]
+            x, y, w, h = regions[i]
             if scores[i] <= GOOD_SCORE:
                 self.state[i] = "ok"
+                present = True
+                self._seen.pop(i, None)
+                continue
+            thumb = thumbs[i]
+            if i in fresh:
+                last = self._seen[i]
+                self.state[i] = last[2]        # lugar igual: mesma conclusao
+                present = present or last[3]
                 continue
             if sidebar is not None and i in search:
                 if side is None:
                     side = sidebar() or False
                 if side:
                     img, sx, sy = side
-                    f = find_ready(img, icon, (w, h))
+                    f = find_ready(img, self.icons[i], (w, h))
                     if f and f[0] <= GOOD_SCORE:
                         nx, ny = sx + f[1], sy + f[2]
                         if abs(nx - x) > w / 2 or abs(ny - y) > h / 2:
                             moved[i] = [nx, ny, w, h]
-                            self.state[i] = "ok"
-                            continue
-            if i in cooldown:
-                held.append(i)                # usada agora: e a recarga
-                continue
-            failing.append(i)
+                        self.state[i] = "ok"
+                        present = True
+                        continue
+            other = self._other_here(i, crops[i])
+            self.state[i] = "missing" if other else "ok"
+            present = present or other
+            if sidebar is None or i in search:
+                # so guarda a conclusao depois de procurar na barra lateral; quem
+                # ficou fora desta rodada de busca e procurado na proxima
+                self._seen[i] = (thumb, now, self.state[i], other)
 
-        if failing and len(failing) * 2 >= len(known):
-            if self.majority_since is None:
-                self.majority_since = now
-        else:
-            self.majority_since = None
-        majority = (self.majority_since is not None
-                    and now - self.majority_since >= self.settle)
-        if moved or majority:
-            for i in failing:
-                self.state[i] = "missing"
-        if majority:
-            # a barra lateral inteira mudou (outro personagem): quem parecia estar em
-            # recarga, mas tambem nao bate de jeito nenhum, sumiu junto
-            for i in held:
-                if scores[i] > MAYBE_SCORE:
-                    self.state[i] = "missing"
-        # sem prova de mudanca: quem nao bate fica como estava (recarga)
+        if present or not known:
+            self.absent_since = None
+            self.gone = False
+        elif self.absent_since is None:
+            self.absent_since = now
+        elif not self.gone and now - self.absent_since >= self.settle:
+            # antes de esconder: talvez todas estejam em recarga; se alguma magia da
+            # vocacao aparece pronta na barra lateral, e o mesmo personagem
+            if side is None and sidebar is not None:
+                side = sidebar() or False
+            i0 = known[0]
+            if side and self._vocation_visible(side[0], tuple(regions[i0][2:4])):
+                self.absent_since = now
+            else:
+                self.gone = True
         return moved
 
 

@@ -67,38 +67,60 @@ class LocalizarTest(unittest.TestCase):
 class SlotTrackerTest(unittest.TestCase):
     """A barra segue as skills escolhidas quando o Set da barra lateral muda."""
 
+    OUTRA = (18, 959)    # posicao (na captura) de uma skill do Barbaro fora da lista
+
     def setUp(self):
         from PIL import ImageDraw, ImageEnhance, ImageFont
         self.Draw, self.Enh, self.Font = ImageDraw, ImageEnhance, ImageFont
         self.side = Image.open(FIXTURE).convert("RGB")
         self.slugs = list(ESPERADO)
-        magias, icons = _carregar(self.slugs)
-        by = dict(zip([m["slug"] for m in magias], icons))
-        self.icons = [by[s].convert("RGB") for s in self.slugs]
+        voc = wiki.find_vocacao(wiki.load_vocacoes(), "barbaro")
+        if not all(wiki.has_icon("barbaro", m) for m in voc["magias"]):
+            raise unittest.SkipTest("icones da wiki nao estao no cache")
+        todos = {m["slug"]: Image.open(wiki.icon_path("barbaro", m)).convert("RGB")
+                 for m in voc["magias"]}
+        self.icons = [todos[s] for s in self.slugs]
+        self.others = list(todos.values())
         self.regions = [[x, y, 44, 44] for x, y in ESPERADO.values()]
 
     def crops(self, img, regions):
         return [img.crop((x, y, x + w, y + h)) for x, y, w, h in regions]
 
-    def run_check(self, img, regions, tracker=None, seconds=1.0, cooldown=()):
+    def tracker(self):
+        return localizar.SlotTracker(self.icons, self.others)
+
+    def run_check(self, img, regions, tracker=None, seconds=1.0, t0=0.0):
         """Verifica como o programa: a cada 0,3 s, por `seconds` segundos."""
-        t = tracker or localizar.SlotTracker(self.icons)
+        t = tracker or self.tracker()
         moved = {}
         for k in range(int(seconds / 0.3) + 1):
             m = t.check(self.crops(img, regions), regions, lambda: (img, 0, 0),
-                        cooldown=cooldown, now=k * 0.3)
+                        now=t0 + k * 0.3)
             for i, r in m.items():
                 regions[i] = r
             moved.update(m)
         return t, moved
+
+    def outra(self):
+        x, y = self.OUTRA
+        return self.side.crop((x, y, x + 44, y + 44))
+
+    def em_recarga(self, img, slug, texto="19.9"):
+        """O jogo em recarga: sem cor, escuro e com a contagem por cima."""
+        x, y = ESPERADO[slug]
+        c = img.crop((x, y, x + 44, y + 44))
+        c = self.Enh.Brightness(self.Enh.Color(c).enhance(0)).enhance(0.45)
+        self.Draw.Draw(c).text((10, 16), texto, fill="white",
+                               font=self.Font.truetype("arial.ttf", 10))
+        img.paste(c, (x, y))
+        return img
 
     def test_tudo_no_lugar(self):
         t, moved = self.run_check(self.side, [list(r) for r in self.regions])
         self.assertEqual(moved, {})
         self.assertEqual(t.state, ["ok"] * 5)
 
-    def test_bug_troca_de_set_segue_a_skill(self):
-        # posicoes salvas trocadas entre si (como se o Set mudasse a ordem)
+    def test_troca_de_set_segue_a_skill(self):
         regs = [list(r) for r in self.regions]
         regs[0], regs[1] = regs[1], regs[0]
         t, moved = self.run_check(self.side, regs)
@@ -106,66 +128,53 @@ class SlotTrackerTest(unittest.TestCase):
         self.assertEqual(sorted(moved), [0, 1])
         self.assertEqual(t.state, ["ok"] * 5)
 
-    def test_troca_de_set_skill_que_nao_esta_nele_fica_apagada(self):
-        # novo Set: a Ira foi para outro lugar e o Vampirismo nao esta nele
+    def test_outra_skill_no_lugar_fica_apagada(self):
         img = self.side.copy()
-        xi, yi = ESPERADO["ira-frenetica"]
-        xv, yv = ESPERADO["vampirismo"]
-        ira = self.side.crop((xi, yi, xi + 44, yi + 44))
-        outra = self.side.crop((18, 959, 62, 1003))
-        img.paste(outra, (xi, yi))
-        img.paste(outra, (xv, yv))
-        img.paste(ira, (18, 1109))
-        regs = [list(r) for r in self.regions]
-        t, moved = self.run_check(img, regs)
-        self.assertEqual(list(moved), [0])                 # Ira seguida
-        self.assertEqual(regs[0][:2], [18, 1109])
-        self.assertEqual(t.state[1], "missing")            # Vampirismo apagado
+        img.paste(self.outra(), ESPERADO["vampirismo"])
+        t, moved = self.run_check(img, [list(r) for r in self.regions])
+        self.assertEqual(t.state[1], "missing")
         self.assertEqual([t.state[i] for i in (0, 2, 3, 4)], ["ok"] * 4)
-        self.assertFalse(t.all_missing())
+        self.assertFalse(t.hidden())
 
     def test_bug_skill_usada_sem_cor_nao_fica_apagada(self):
-        # recarga: o jogo tira a cor, escurece e escreve a contagem. Sozinha, sem
-        # nenhuma skill mudar de lugar, continua sendo copiada da tela.
-        img = self.side.copy()
-        font = self.Font.truetype("arial.ttf", 10)
-        x, y = ESPERADO["ira-frenetica"]
-        c = img.crop((x, y, x + 44, y + 44))
-        c = self.Enh.Brightness(self.Enh.Color(c).enhance(0)).enhance(0.45)
-        self.Draw.Draw(c).text((10, 16), "19.9", fill="white", font=font)
-        img.paste(c, (x, y))
-        self.assertGreater(localizar.match_score(c, self.icons[0]), localizar.MAYBE_SCORE)
+        img = self.em_recarga(self.side.copy(), "ira-frenetica")
+        self.assertGreater(localizar.match_score(img.crop((18, 759, 62, 803)),
+                                                 self.icons[0]), localizar.MAYBE_SCORE)
         t, moved = self.run_check(img, [list(r) for r in self.regions], seconds=10)
         self.assertEqual(moved, {})
         self.assertEqual(t.state, ["ok"] * 5)
 
-    def test_varias_em_recarga_confirmada_nao_apagam(self):
-        img = self.side.copy()
-        for x, y in list(ESPERADO.values())[:3]:
-            c = img.crop((x, y, x + 44, y + 44))
-            img.paste(self.Enh.Brightness(self.Enh.Color(c).enhance(0)).enhance(0.45), (x, y))
-        t, _ = self.run_check(img, [list(r) for r in self.regions], seconds=10,
-                              cooldown=(0, 1, 2))
+    def test_bug_set1_recarga_set2_volta_set1(self):
+        regs = [list(r) for r in self.regions]
+        set1 = self.side.copy()
+        for slug in ("ira-frenetica", "vampirismo", "furia"):
+            self.em_recarga(set1, slug)
+        t, _ = self.run_check(set1, regs, seconds=3)                 # usou as skills
+        self.assertEqual(t.state, ["ok"] * 5)
+        set2 = self.side.copy()                                      # Set 2: outras skills
+        for xy in ESPERADO.values():
+            set2.paste(self.outra(), xy)
+        t, _ = self.run_check(set2, regs, tracker=t, seconds=5, t0=3)
+        self.assertEqual(t.state, ["missing"] * 5)
+        self.assertFalse(t.hidden())                                 # mesma vocacao
+        t, _ = self.run_check(set1, regs, tracker=t, seconds=1, t0=8)  # volta ao Set 1
         self.assertEqual(t.state, ["ok"] * 5)
 
-    def test_recarga_com_contagem_nao_conta_como_troca(self):
+    def test_todas_em_recarga_nao_apagam_nem_somem(self):
         img = self.side.copy()
-        font = self.Font.truetype("arial.ttf", 10)
-        for x, y in ESPERADO.values():
-            c = self.Enh.Brightness(img.crop((x, y, x + 44, y + 44))).enhance(0.4)
-            self.Draw.Draw(c).text((10, 16), "19.9s", fill="white", font=font)
-            img.paste(c, (x, y))
-        t, moved = self.run_check(img, [list(r) for r in self.regions])
-        self.assertEqual(moved, {})
+        for slug in ESPERADO:
+            self.em_recarga(img, slug)
+        t, _ = self.run_check(img, [list(r) for r in self.regions], seconds=10)
         self.assertEqual(t.state, ["ok"] * 5)
+        self.assertFalse(t.hidden())
 
-    def test_outro_personagem_tudo_sumido_depois_de_firmar(self):
+    def test_outro_personagem_some_depois_de_firmar(self):
         outro = Image.new("RGB", self.side.size, (40, 32, 30))
         t, _ = self.run_check(outro, [list(r) for r in self.regions], seconds=1.5)
-        self.assertFalse(t.all_missing())     # pode ser so a recarga global
+        self.assertFalse(t.hidden())          # pode ser so a recarga global
         t, _ = self.run_check(outro, [list(r) for r in self.regions], tracker=t,
-                              seconds=3.0)
-        self.assertTrue(t.all_missing())
+                              seconds=2.0, t0=1.8)
+        self.assertTrue(t.hidden())
 
     def test_conta_skills_de_um_preset_na_barra_lateral(self):
         self.assertEqual(localizar.count_found(self.side, self.icons, (44, 44)), 5)

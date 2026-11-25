@@ -501,20 +501,29 @@ class SkillBar:
                 bar.show()
         self.detect_casts(all_crops)
 
-    def profile_icons(self, prof):
-        """Icone da wiki de cada skill (indice global) de um personagem, ou None."""
+    def profile_icons(self, prof, everything=False):
+        """Icone da wiki de cada skill (indice global) de um personagem, ou None.
+        everything=True: (icones das skills, icones de todas as magias da vocacao),
+        com o mesmo objeto quando a magia esta nos dois."""
         voc_slug = prof.get("vocacao") or ""
         voc = wiki.find_vocacao(self.vocacoes, voc_slug)
+        cache = {}
+
+        def load(m):
+            if m is None or not wiki.has_icon(voc_slug, m):
+                return None
+            if m["slug"] not in cache:
+                try:
+                    cache[m["slug"]] = Image.open(wiki.icon_path(voc_slug, m)).convert("RGB")
+                except OSError:
+                    cache[m["slug"]] = None
+            return cache[m["slug"]]
+
         by = {m["slug"]: m for m in voc["magias"]} if voc else {}
-        icons = []
-        for slug in config.all_magias(prof):
-            m = by.get(slug) if slug else None
-            try:
-                icons.append(Image.open(wiki.icon_path(voc_slug, m)).convert("RGB")
-                             if m and wiki.has_icon(voc_slug, m) else None)
-            except OSError:
-                icons.append(None)
-        return icons
+        icons = [load(by.get(slug)) if slug else None for slug in config.all_magias(prof)]
+        if not everything:
+            return icons
+        return icons, [load(m) for m in (voc["magias"] if voc else [])]
 
     def gray_icon(self, i, size):
         key = (i, size)
@@ -542,13 +551,13 @@ class SkillBar:
             return
         self.next_check = now + (1.0 if self.wrong_char else 0.3)
         if self.slots is None:
-            self.slots = localizar.SlotTracker(self.profile_icons(self.cfg))
+            icons, others = self.profile_icons(self.cfg, everything=True)
+            self.slots = localizar.SlotTracker(icons, others)
         regions = [r for bar in self.bars for r in bar.data["regions"]]
         if len(regions) != len(self.slots.icons) or len(crops) != len(regions):
             return
         before = list(self.slots.state)
-        cooldown = [i for i, d in enumerate(self.cast_detectors) if d.in_cooldown()]
-        moved = self.slots.check(crops, regions, self.grab_sidebar, cooldown=cooldown)
+        moved = self.slots.check(crops, regions, self.grab_sidebar)
         if moved:
             names = config.all_magias(self.cfg)
             offsets = config.bar_offsets(self.cfg)
@@ -562,7 +571,7 @@ class SkillBar:
             if (a != b or i in moved) and i < len(self.cast_detectors):
                 self.cast_detectors[i] = CastDetector()   # troca de icone nao e "uso"
 
-        if not self.slots.all_missing():
+        if not self.slots.hidden():
             self.wrong_since = None
             self.tried_presets = False
             if self.wrong_char:
@@ -613,9 +622,10 @@ class SkillBar:
                              'criar um.' % self.cfg.get("profile"))
 
     def detect_casts(self, crops):
-        """Percebe quando uma skill e usada (icone escurece). Serve para reiniciar o
-        tempo do buff ligado a ela (skill reusada antes de acabar) e para a
-        verificacao de Set saber que o icone diferente e so a recarga."""
+        """Percebe quando uma skill e usada (icone escurece) e reinicia o tempo do
+        buff ligado a ela, caso ele ja esteja ativo (skill reusada antes de acabar)."""
+        if not self.buffs:
+            return
         if len(self.cast_detectors) != len(crops):
             self.cast_detectors = [CastDetector() for _ in crops]
         now = time.monotonic()
