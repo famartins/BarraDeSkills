@@ -13,7 +13,9 @@ from ctypes import wintypes
 import mss
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
+import tema
 from buffcore import buff_time_text
+from config import RES_DIR
 
 # --------------------------------------------------------------------------
 # Windows (ctypes)
@@ -211,20 +213,21 @@ class Calibrator:
             w.bind("<BackSpace>", lambda e: self.undo())
 
     def _build_banner(self):
-        bg = "#101820"
-        bar = tk.Frame(self.canvas, bg=bg, padx=14, pady=10)
+        bg = tema.MARK_BG
+        bar = tk.Frame(self.canvas, bg=bg, padx=14, pady=10,
+                       highlightthickness=1, highlightbackground=tema.SECONDARY)
         msg = self.message or (
                "CALIBRACAO - marque as skills NA ORDEM em que quer na barra\n"
                "1a skill: ARRASTE um retangulo sobre o icone.   "
                "Demais: basta CLICAR no centro do icone (usa o mesmo tamanho).\n"
                "Botao direito ou Backspace: desfaz a ultima.   "
                "Enter: concluir.   Esc: cancelar.")
-        tk.Label(bar, text=msg, bg=bg, fg="white", font=("Segoe UI", 11),
+        tk.Label(bar, text=msg, bg=bg, fg=tema.MARK_TEXT, font=("Segoe UI", 11),
                  justify="center").pack()
         row = tk.Frame(bar, bg=bg)
         row.pack(pady=(8, 0))
         self.status = tk.Label(row, text="0 skills marcadas", bg=bg,
-                               fg="#00ff66", font=("Segoe UI", 11, "bold"))
+                               fg=tema.MARK_LINE, font=("Segoe UI", 11, "bold"))
         self.status.pack(side="left", padx=(0, 16))
         tk.Button(row, text="Desfazer", command=self.undo).pack(side="left", padx=4)
         tk.Button(row, text="Concluir (Enter)", command=self.finish).pack(side="left", padx=4)
@@ -235,10 +238,10 @@ class Calibrator:
     def redraw(self):
         self.canvas.delete("rect")
         for i, (x, y, w, h) in enumerate(self.rects, 1):
-            self.canvas.create_rectangle(x, y, x + w, y + h, outline="#00ff66",
+            self.canvas.create_rectangle(x, y, x + w, y + h, outline=tema.MARK_LINE,
                                          width=2, tags="rect")
             self.canvas.create_text(x + 3, y + 1, text=str(i), anchor="nw",
-                                    fill="#ffee00", font=("Segoe UI", 10, "bold"),
+                                    fill=tema.WARN, font=("Segoe UI", 10, "bold"),
                                     tags="rect")
         if self.single:
             self.status.config(text="area marcada" if self.rects else "nada marcado")
@@ -249,7 +252,7 @@ class Calibrator:
     def on_press(self, e):
         self.drag_start = (e.x, e.y)
         self.temp = self.canvas.create_rectangle(
-            e.x, e.y, e.x, e.y, outline="#00ff66", width=2, dash=(4, 3))
+            e.x, e.y, e.x, e.y, outline=tema.MARK_LINE, width=2, dash=(4, 3))
 
     def on_drag(self, e):
         if self.temp and self.drag_start:
@@ -317,21 +320,27 @@ class Calibrator:
 # --------------------------------------------------------------------------
 # Buffs: janela com os buffs ativos e tooltip
 # --------------------------------------------------------------------------
-WARN_COLOR = "#e0302a"   # moldura do buff que esta acabando
-BOX_BORDER = "#6b5a48"   # caixa do modo so buffs
-BOX_TITLE = "#f2c75c"
-BOX_DIM = "#8a8070"
-BOX_CELL = "#24201b"
+WARN_COLOR = tema.WARN_COLOR   # moldura do buff que esta acabando (alerta)
+BOX_BORDER = tema.BOX_BORDER   # caixa do modo so buffs
+BOX_TITLE = tema.BOX_TITLE
+BOX_DIM = tema.BOX_DIM
+BOX_CELL = tema.BOX_CELL
 _FONTS = {}
 
 
 def _font(size, bold=False):
-    """Fonte Segoe UI do Windows (ou a padrao do Pillow, se nao achar)."""
+    """Inter que vai junto do programa (ou Segoe UI / a padrao do Pillow)."""
     key = (size, bold)
     if key not in _FONTS:
-        try:
-            _FONTS[key] = ImageFont.truetype("segoeuib.ttf" if bold else "segoeui.ttf", size)
-        except OSError:
+        inter = os.path.join(RES_DIR, "dados", "fontes",
+                             "Inter-SemiBold.ttf" if bold else "Inter-Regular.ttf")
+        for name in (inter, "segoeuib.ttf" if bold else "segoeui.ttf"):
+            try:
+                _FONTS[key] = ImageFont.truetype(name, size)
+                break
+            except OSError:
+                continue
+        else:
             _FONTS[key] = ImageFont.load_default(size)
     return _FONTS[key]
 
@@ -350,7 +359,7 @@ class BuffWindow:
       modo "so buffs").
     """
 
-    TIP_BG, TIP_BORDER = "#2a2118", "#6b5a48"
+    TIP_BG, TIP_BORDER = tema.TIP_BG, tema.TIP_BORDER
 
     def __init__(self, app, bar=None):
         self.app = app
@@ -654,11 +663,11 @@ class BuffWindow:
         t.configure(bg=self.TIP_BORDER)
         inner = tk.Frame(t, bg=self.TIP_BG, padx=9, pady=6)
         inner.pack(padx=1, pady=1)
-        self.tip_name = tk.Label(inner, bg=self.TIP_BG, fg="#f2c75c", anchor="w",
+        self.tip_name = tk.Label(inner, bg=self.TIP_BG, fg=tema.TIP_NAME, anchor="w",
                                  justify="left", font=("Segoe UI", 10, "bold"))
-        self.tip_desc = tk.Label(inner, bg=self.TIP_BG, fg="#e8e0d4", anchor="w",
+        self.tip_desc = tk.Label(inner, bg=self.TIP_BG, fg=tema.TIP_DESC, anchor="w",
                                  justify="left", wraplength=280, font=("Segoe UI", 9))
-        self.tip_time = tk.Label(inner, bg=self.TIP_BG, fg="#ff4d3d", anchor="w",
+        self.tip_time = tk.Label(inner, bg=self.TIP_BG, fg=tema.TIP_TIME, anchor="w",
                                  justify="left", font=("Segoe UI", 9))
         self.tip_name.pack(anchor="w")
         self.tip_time.pack(anchor="w")

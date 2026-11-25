@@ -10,15 +10,22 @@ baixadas da Bloodpedia na primeira vez e guardadas em cache/.
 import json
 import os
 import threading
+import unicodedata
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 from config import BASE_DIR, RES_DIR
 
+
+def normalize(text):
+    """Para buscas: sem acento, minusculas e espacos simples ("Fúria" -> "furia")."""
+    text = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode()
+    return " ".join(text.lower().split())
+
 DATA_PATH = os.path.join(RES_DIR, "dados", "vocacoes.json")
 CACHE_DIR = os.path.join(BASE_DIR, "cache", "icones")
 ART_DIR = os.path.join(BASE_DIR, "cache", "artes")
-USER_AGENT = "BarraDeSkills/0.5.3"
+USER_AGENT = "BarraDeSkills/0.6"
 
 
 def load_vocacoes():

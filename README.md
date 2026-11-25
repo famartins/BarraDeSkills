@@ -156,8 +156,12 @@ print da tela e o `diagnostico.txt`.
   `SetLayeredWindowAttributes`). O click-through liga o `WS_EX_TRANSPARENT`.
 - **Sem eco na captura:** `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)` impede que
   as próprias barras apareçam nas capturas, mesmo sobrepostas às skills originais.
-- **Telas:** [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter), tema escuro
-  (`telas.py`).
+- **Telas:** [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) (`telas.py`),
+  com a identidade visual em `tema.py`: paleta verde-escura com acentos neon (fundo
+  `#002E34`, superfície `#004443`, secundária `#00755C`, acento `#00C16C`, destaque
+  `#90FF17`), texto escuro sobre o acento, raios de 10–14 px e a fonte
+  [Inter](https://rsms.me/inter/) (licença SIL OFL, em `dados/fontes/`). As barras e
+  buffs sobre o jogo usam as mesmas cores; a moldura do buff acabando continua vermelha.
 - **Personagens** (`config.py`): as opções gerais valem para todos. Vocação, barras e
   buffs pertencem a cada personagem. O personagem ativo fica no nível de cima da
   configuração, e uma cópia dele é guardada em `profiles` a cada gravação. Configurações
@@ -219,12 +223,13 @@ print da tela e o `diagnostico.txt`.
 | `skillbar.py` | Programa principal: ciclo, personagens, buffs, aviso, atalhos |
 | `overlay.py` | Janelas por cima do jogo: barras, buffs, tela de marcação, estilos Win32 |
 | `telas.py` | Assistente, configurações e editor de buff (CustomTkinter) |
+| `tema.py` | Identidade visual: cores, fonte, raios e espaçamentos |
 | `config.py` | Configuração, personagens e migração (sem Windows, testável) |
 | `wiki.py` | Carrega `dados/vocacoes.json` e mantém o cache de imagens |
 | `localizar.py` | Acha as magias na barra lateral do jogo |
 | `buffcore.py` | Busca de ícone, cronômetro, detecção de uso da skill e área de busca |
 | `sistema.py` | Windows: cópia única, ícone na bandeja, janela do jogo, abrir com o Windows |
-| `dados/` | `vocacoes.json` (gerado da Bloodpedia) e `icone.ico` |
+| `dados/` | `vocacoes.json` (gerado da Bloodpedia), `icone.ico` e a fonte Inter (`fontes/`) |
 | `ferramentas/atualizar_wiki.py` | Regera o `vocacoes.json` quando a wiki mudar |
 | `ferramentas/gerar_exe.py` | Gera o executável e o ZIP para Releases |
 | `tests/` | Testes: `python -m unittest discover -s tests` |

@@ -6,7 +6,7 @@ Gera dados/vocacoes.json a partir da tabela "Magias" da Bloodpedia.
 So o mantenedor precisa rodar isto, quando a wiki mudar:
     python ferramentas/atualizar_wiki.py
 
-Guarda apenas nome, tipo, nivel minimo e link do icone de cada magia, e o link
+Guarda apenas nome, tipo, nivel minimo, mana e link do icone de cada magia, e o link
 da arte de cada vocacao (pagina inicial). As imagens NAO sao guardadas no
 repositorio: o programa baixa cada uma na primeira vez (veja wiki.py).
 A duracao dos buffs nao vem da wiki: o tempo citado la nao e a duracao real.
@@ -65,11 +65,16 @@ def ler_magias(pagina):
             nivel = int(texto(campos.get("Lvl_1", "")) or 0)
         except ValueError:
             nivel = 0
+        try:
+            mana = int(texto(campos.get("Mana", "")) or 0)
+        except ValueError:
+            mana = 0
         magias.append({
             "nome": texto(campos["Magia"]),
             "slug": slug,
             "tipo": tipo,
             "nivel": nivel,
+            "mana": mana,
             "icone_url": urllib.parse.urljoin(SITE, img.group(1)),
         })
     return magias

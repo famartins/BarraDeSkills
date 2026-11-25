@@ -11,6 +11,7 @@
      "slug": "primeiros-socorros",
      "tipo": "Cura",
      "nivel": 2,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/a/a4/Primeiros_Socorros.png"
     },
     {
@@ -18,6 +19,7 @@
      "slug": "corte-preciso",
      "tipo": "Ataque",
      "nivel": 3,
+     "mana": 6,
      "icone_url": "https://bloodpedia.vercel.app/w/images/7/7b/Corte_Preciso.png"
     },
     {
@@ -25,6 +27,7 @@
      "slug": "cura-de-veneno",
      "tipo": "Cura",
      "nivel": 4,
+     "mana": 4,
      "icone_url": "https://bloodpedia.vercel.app/w/images/5/56/Cura_de_Veneno.png"
     },
     {
@@ -32,6 +35,7 @@
      "slug": "recuperacao",
      "tipo": "Cura",
      "nivel": 5,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/7/7b/Recupera%C3%A7%C3%A3o.png"
     },
     {
@@ -39,6 +43,7 @@
      "slug": "regeneracao",
      "tipo": "Cura",
      "nivel": 5,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/9/9f/Regenera%C3%A7%C3%A3o.png"
     },
     {
@@ -46,6 +51,7 @@
      "slug": "armadura-imbativel",
      "tipo": "Suporte",
      "nivel": 8,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/9/92/Armadura_Imbat%C3%ADvel.png"
     },
     {
@@ -53,6 +59,7 @@
      "slug": "punhalada",
      "tipo": "Ataque",
      "nivel": 8,
+     "mana": 4,
      "icone_url": "https://bloodpedia.vercel.app/w/images/6/6d/Punhalada.png"
     },
     {
@@ -60,6 +67,7 @@
      "slug": "ataque-perfurante",
      "tipo": "Ataque",
      "nivel": 12,
+     "mana": 10,
      "icone_url": "https://bloodpedia.vercel.app/w/images/c/ca/Ataque_Perfurante.png"
     },
     {
@@ -67,6 +75,7 @@
      "slug": "aumento-de-velocidade",
      "tipo": "Suporte",
      "nivel": 13,
+     "mana": 40,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/0d/Aumento_de_Velocidade.png"
     },
     {
@@ -74,6 +83,7 @@
      "slug": "cura-de-paralisia",
      "tipo": "Cura",
      "nivel": 15,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/05/Cura_de_Paralisia.png"
     },
     {
@@ -81,6 +91,7 @@
      "slug": "provocar",
      "tipo": "Suporte",
      "nivel": 15,
+     "mana": 12,
      "icone_url": "https://bloodpedia.vercel.app/w/images/c/ce/Provocar.png"
     },
     {
@@ -88,6 +99,7 @@
      "slug": "corpo-de-ferro",
      "tipo": "Suporte",
      "nivel": 18,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/2/29/Corpo_de_Ferro.png"
     },
     {
@@ -95,6 +107,7 @@
      "slug": "corte-ao-vento",
      "tipo": "Ataque",
      "nivel": 24,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/8/8b/Corte_ao_Vento.png"
     },
     {
@@ -102,6 +115,7 @@
      "slug": "espirito-defensor",
      "tipo": "Suporte",
      "nivel": 26,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/6/6a/Esp%C3%ADrito_Defensor.png"
     },
     {
@@ -109,6 +123,7 @@
      "slug": "corte-horizontal",
      "tipo": "Ataque",
      "nivel": 28,
+     "mana": 16,
      "icone_url": "https://bloodpedia.vercel.app/w/images/6/66/Corte_Horizontal.png"
     },
     {
@@ -116,6 +131,7 @@
      "slug": "escudo-esmagador",
      "tipo": "Ataque",
      "nivel": 28,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/b/b2/Escudo_Esmagador.png"
     },
     {
@@ -123,6 +139,7 @@
      "slug": "martir",
      "tipo": "Suporte",
      "nivel": 28,
+     "mana": 50,
      "icone_url": "https://bloodpedia.vercel.app/w/images/7/7c/M%C3%A1rtir.png"
     },
     {
@@ -130,6 +147,7 @@
      "slug": "provocacao-intensa",
      "tipo": "Suporte",
      "nivel": 30,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/d/d5/Provoca%C3%A7%C3%A3o_Intensa.png"
     },
     {
@@ -137,6 +155,7 @@
      "slug": "lamina-sanguessuga",
      "tipo": "Suporte",
      "nivel": 32,
+     "mana": 25,
      "icone_url": "https://bloodpedia.vercel.app/w/images/c/c8/L%C3%A2mina_Sanguessuga.png"
     },
     {
@@ -144,6 +163,7 @@
      "slug": "bumerangue",
      "tipo": "Ataque",
      "nivel": 35,
+     "mana": 15,
      "icone_url": "https://bloodpedia.vercel.app/w/images/5/56/Bumerangue.png"
     },
     {
@@ -151,6 +171,7 @@
      "slug": "invocacao-de-espadas",
      "tipo": "Suporte",
      "nivel": 38,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/e/e9/Invoca%C3%A7%C3%A3o_de_Espadas.png"
     },
     {
@@ -158,6 +179,7 @@
      "slug": "lamina-hostil",
      "tipo": "Ataque",
      "nivel": 40,
+     "mana": 35,
      "icone_url": "https://bloodpedia.vercel.app/w/images/4/40/L%C3%A2mina_Hostil.png"
     },
     {
@@ -165,6 +187,7 @@
      "slug": "protecao-alvo",
      "tipo": "Suporte",
      "nivel": 47,
+     "mana": 40,
      "icone_url": "https://bloodpedia.vercel.app/w/images/6/66/Prote%C3%A7%C3%A3o_Alvo.png"
     },
     {
@@ -172,6 +195,7 @@
      "slug": "fervor-brutal",
      "tipo": "Suporte",
      "nivel": 50,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/4/43/Fervor_Brutal.png"
     },
     {
@@ -179,6 +203,7 @@
      "slug": "protecao-magica-amaldicoada",
      "tipo": "Suporte",
      "nivel": 52,
+     "mana": 140,
      "icone_url": "https://bloodpedia.vercel.app/w/images/9/9e/Prote%C3%A7%C3%A3o_M%C3%A1gica_Amaldi%C3%A7oada.png"
     },
     {
@@ -186,6 +211,7 @@
      "slug": "chuva-de-espadas",
      "tipo": "Ataque",
      "nivel": 65,
+     "mana": 45,
      "icone_url": "https://bloodpedia.vercel.app/w/images/8/88/Chuva_de_Espadas.png"
     },
     {
@@ -193,6 +219,7 @@
      "slug": "refracao",
      "tipo": "Suporte",
      "nivel": 72,
+     "mana": 50,
      "icone_url": "https://bloodpedia.vercel.app/w/images/e/e4/Refra%C3%A7%C3%A3o.png"
     }
    ]
@@ -207,6 +234,7 @@
      "slug": "primeiros-socorros",
      "tipo": "Cura",
      "nivel": 2,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/a/a4/Primeiros_Socorros.png"
     },
     {
@@ -214,6 +242,7 @@
      "slug": "esmagar",
      "tipo": "Ataque",
      "nivel": 3,
+     "mana": 7,
      "icone_url": "https://bloodpedia.vercel.app/w/images/3/3e/Esmagar.png"
     },
     {
@@ -221,6 +250,7 @@
      "slug": "cura-de-veneno",
      "tipo": "Cura",
      "nivel": 4,
+     "mana": 4,
      "icone_url": "https://bloodpedia.vercel.app/w/images/5/56/Cura_de_Veneno.png"
     },
     {
@@ -228,6 +258,7 @@
      "slug": "recuperacao",
      "tipo": "Cura",
      "nivel": 5,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/7/7b/Recupera%C3%A7%C3%A3o.png"
     },
     {
@@ -235,6 +266,7 @@
      "slug": "regeneracao",
      "tipo": "Cura",
      "nivel": 5,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/9/9f/Regenera%C3%A7%C3%A3o.png"
     },
     {
@@ -242,6 +274,7 @@
      "slug": "golpe-profundo",
      "tipo": "Ataque",
      "nivel": 8,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/c/c5/Golpe_Profundo.png"
     },
     {
@@ -249,6 +282,7 @@
      "slug": "retaliacao-180",
      "tipo": "Ataque",
      "nivel": 12,
+     "mana": 16,
      "icone_url": "https://bloodpedia.vercel.app/w/images/5/53/Retalia%C3%A7%C3%A3o_180%C2%B0.png"
     },
     {
@@ -256,6 +290,7 @@
      "slug": "aumento-de-velocidade",
      "tipo": "Suporte",
      "nivel": 13,
+     "mana": 40,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/0d/Aumento_de_Velocidade.png"
     },
     {
@@ -263,6 +298,7 @@
      "slug": "medo",
      "tipo": "Suporte",
      "nivel": 13,
+     "mana": 25,
      "icone_url": "https://bloodpedia.vercel.app/w/images/a/af/Medo.png"
     },
     {
@@ -270,6 +306,7 @@
      "slug": "cura-de-paralisia",
      "tipo": "Cura",
      "nivel": 15,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/05/Cura_de_Paralisia.png"
     },
     {
@@ -277,6 +314,7 @@
      "slug": "furia",
      "tipo": "Suporte",
      "nivel": 16,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/b/b1/F%C3%BAria.png"
     },
     {
@@ -284,6 +322,7 @@
      "slug": "giro-sanguinario",
      "tipo": "Ataque",
      "nivel": 20,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/2/25/Giro_Sanguin%C3%A1rio.png"
     },
     {
@@ -291,6 +330,7 @@
      "slug": "investida",
      "tipo": "Suporte",
      "nivel": 20,
+     "mana": 15,
      "icone_url": "https://bloodpedia.vercel.app/w/images/a/a9/Investida.png"
     },
     {
@@ -298,6 +338,7 @@
      "slug": "vitalidade",
      "tipo": "Cura",
      "nivel": 25,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/7/75/Vitalidade.png"
     },
     {
@@ -305,6 +346,7 @@
      "slug": "ira-frenetica",
      "tipo": "Suporte",
      "nivel": 26,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/2/2c/Ira_Fren%C3%A9tica.png"
     },
     {
@@ -312,6 +354,7 @@
      "slug": "repulsao",
      "tipo": "Ataque",
      "nivel": 26,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/2/2f/Repuls%C3%A3o.png"
     },
     {
@@ -319,6 +362,7 @@
      "slug": "vampirismo",
      "tipo": "Suporte",
      "nivel": 30,
+     "mana": 85,
      "icone_url": "https://bloodpedia.vercel.app/w/images/c/c4/Vampirismo.png"
     },
     {
@@ -326,6 +370,7 @@
      "slug": "arremesso-de-machado",
      "tipo": "Ataque",
      "nivel": 32,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/a/ad/Arremesso_de_Machado.png"
     },
     {
@@ -333,6 +378,7 @@
      "slug": "rebaixar",
      "tipo": "Suporte",
      "nivel": 32,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/2/20/Rebaixar.png"
     },
     {
@@ -340,6 +386,7 @@
      "slug": "contra-ataque",
      "tipo": "Suporte",
      "nivel": 34,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/b/be/Contra-Ataque.png"
     },
     {
@@ -347,6 +394,7 @@
      "slug": "grito-de-comando",
      "tipo": "Suporte",
      "nivel": 36,
+     "mana": 100,
      "icone_url": "https://bloodpedia.vercel.app/w/images/5/53/Grito_de_Comando.png"
     },
     {
@@ -354,6 +402,7 @@
      "slug": "golpe-colossal",
      "tipo": "Ataque",
      "nivel": 40,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/09/Golpe_Colossal.png"
     },
     {
@@ -361,6 +410,7 @@
      "slug": "golpe-triplo",
      "tipo": "Ataque",
      "nivel": 40,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/6/6b/Golpe_Triplo.png"
     },
     {
@@ -368,6 +418,7 @@
      "slug": "apocalipse",
      "tipo": "Ataque",
      "nivel": 46,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/9/96/Apocalipse.png"
     },
     {
@@ -375,6 +426,7 @@
      "slug": "impacto-atordoante",
      "tipo": "Ataque",
      "nivel": 46,
+     "mana": 45,
      "icone_url": "https://bloodpedia.vercel.app/w/images/9/98/Impacto_Atordoante.png"
     },
     {
@@ -382,6 +434,7 @@
      "slug": "giro-fulminante",
      "tipo": "Ataque",
      "nivel": 65,
+     "mana": 40,
      "icone_url": "https://bloodpedia.vercel.app/w/images/e/ec/Giro_Fulminante.png"
     },
     {
@@ -389,6 +442,7 @@
      "slug": "estilhacar",
      "tipo": "Suporte",
      "nivel": 70,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/b/be/Estilha%C3%A7ar.png"
     }
    ]
@@ -403,6 +457,7 @@
      "slug": "primeiros-socorros",
      "tipo": "Cura",
      "nivel": 2,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/a/a4/Primeiros_Socorros.png"
     },
     {
@@ -410,6 +465,7 @@
      "slug": "conjuracao-de-flechas",
      "tipo": "Suporte",
      "nivel": 3,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/9/94/Conjura%C3%A7%C3%A3o_de_Flechas.png"
     },
     {
@@ -417,6 +473,7 @@
      "slug": "cura-de-veneno",
      "tipo": "Cura",
      "nivel": 4,
+     "mana": 4,
      "icone_url": "https://bloodpedia.vercel.app/w/images/5/56/Cura_de_Veneno.png"
     },
     {
@@ -424,6 +481,7 @@
      "slug": "disparo-duplo",
      "tipo": "Ataque",
      "nivel": 4,
+     "mana": 12,
      "icone_url": "https://bloodpedia.vercel.app/w/images/e/eb/Disparo_Duplo.png"
     },
     {
@@ -431,6 +489,7 @@
      "slug": "dupla-regeneracao",
      "tipo": "Cura",
      "nivel": 5,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/c/c1/Dupla_Regenera%C3%A7%C3%A3o.png"
     },
     {
@@ -438,6 +497,7 @@
      "slug": "flecha-letal",
      "tipo": "Ataque",
      "nivel": 8,
+     "mana": 12,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/01/Flecha_Letal.png"
     },
     {
@@ -445,6 +505,7 @@
      "slug": "tiro-de-fumaca",
      "tipo": "Suporte",
      "nivel": 12,
+     "mana": 18,
      "icone_url": "https://bloodpedia.vercel.app/w/images/c/cb/Tiro_de_Fuma%C3%A7a.png"
     },
     {
@@ -452,6 +513,7 @@
      "slug": "aumento-de-velocidade",
      "tipo": "Suporte",
      "nivel": 13,
+     "mana": 40,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/0d/Aumento_de_Velocidade.png"
     },
     {
@@ -459,6 +521,7 @@
      "slug": "ataque-critico",
      "tipo": "Suporte",
      "nivel": 15,
+     "mana": 60,
      "icone_url": "https://bloodpedia.vercel.app/w/images/2/20/Ataque_Cr%C3%ADtico.png"
     },
     {
@@ -466,6 +529,7 @@
      "slug": "cura-de-paralisia",
      "tipo": "Cura",
      "nivel": 15,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/05/Cura_de_Paralisia.png"
     },
     {
@@ -473,6 +537,7 @@
      "slug": "chamado-do-falcao",
      "tipo": "Suporte",
      "nivel": 20,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/b/bb/Chamado_do_Falc%C3%A3o.png"
     },
     {
@@ -480,6 +545,7 @@
      "slug": "investida-do-falcao",
      "tipo": "Ataque",
      "nivel": 20,
+     "mana": 15,
      "icone_url": "https://bloodpedia.vercel.app/w/images/1/14/Investida_do_Falc%C3%A3o.png"
     },
     {
@@ -487,6 +553,7 @@
      "slug": "tiros-precisos",
      "tipo": "Suporte",
      "nivel": 25,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/5/5f/Tiros_Precisos.png"
     },
     {
@@ -494,6 +561,7 @@
      "slug": "grande-flecha",
      "tipo": "Ataque",
      "nivel": 28,
+     "mana": 25,
      "icone_url": "https://bloodpedia.vercel.app/w/images/3/3f/Grande_Flecha.png"
     },
     {
@@ -501,6 +569,7 @@
      "slug": "chuva-de-flechas",
      "tipo": "Ataque",
      "nivel": 30,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/f/fe/Chuva_de_Flechas.png"
     },
     {
@@ -508,6 +577,7 @@
      "slug": "flecha-vampirica",
      "tipo": "Suporte",
      "nivel": 32,
+     "mana": 35,
      "icone_url": "https://bloodpedia.vercel.app/w/images/d/d0/Flecha_Vamp%C3%ADrica.png"
     },
     {
@@ -515,6 +585,7 @@
      "slug": "pluma-do-falcao",
      "tipo": "Ataque",
      "nivel": 35,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/8/82/Pluma_do_Falc%C3%A3o.png"
     },
     {
@@ -522,6 +593,7 @@
      "slug": "precisao",
      "tipo": "Suporte",
      "nivel": 35,
+     "mana": 160,
      "icone_url": "https://bloodpedia.vercel.app/w/images/a/a3/Precis%C3%A3o.png"
     },
     {
@@ -529,6 +601,7 @@
      "slug": "tiro-perfurante",
      "tipo": "Ataque",
      "nivel": 38,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/c/c0/Tiro_Perfurante.png"
     },
     {
@@ -536,6 +609,7 @@
      "slug": "cura-do-cacador",
      "tipo": "Cura",
      "nivel": 40,
+     "mana": 50,
      "icone_url": "https://bloodpedia.vercel.app/w/images/8/88/Cura_do_Ca%C3%A7ador.png"
     },
     {
@@ -543,6 +617,7 @@
      "slug": "armadilha",
      "tipo": "Ataque",
      "nivel": 42,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/2/28/Armadilha.png"
     },
     {
@@ -550,6 +625,7 @@
      "slug": "tiro-rapido",
      "tipo": "Passiva",
      "nivel": 50,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/d/dd/Tiro_R%C3%A1pido.png"
     },
     {
@@ -557,6 +633,7 @@
      "slug": "tiro-grudento",
      "tipo": "Suporte",
      "nivel": 55,
+     "mana": 40,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/09/Tiro_Grudento.png"
     },
     {
@@ -564,6 +641,7 @@
      "slug": "aniquilacao",
      "tipo": "Ataque",
      "nivel": 65,
+     "mana": 40,
      "icone_url": "https://bloodpedia.vercel.app/w/images/e/e7/Aniquila%C3%A7%C3%A3o.png"
     },
     {
@@ -571,6 +649,7 @@
      "slug": "tiros-multiplos",
      "tipo": "Suporte",
      "nivel": 68,
+     "mana": 100,
      "icone_url": "https://bloodpedia.vercel.app/w/images/d/d1/Tiros_M%C3%BAltiplos.png"
     }
    ]
@@ -585,6 +664,7 @@
      "slug": "primeiros-socorros",
      "tipo": "Cura",
      "nivel": 2,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/a/a4/Primeiros_Socorros.png"
     },
     {
@@ -592,6 +672,7 @@
      "slug": "missil-de-veneno",
      "tipo": "Ataque",
      "nivel": 3,
+     "mana": 12,
      "icone_url": "https://bloodpedia.vercel.app/w/images/c/ce/M%C3%ADssil_de_Veneno.png"
     },
     {
@@ -599,6 +680,7 @@
      "slug": "missil-de-luz",
      "tipo": "Ataque",
      "nivel": 3,
+     "mana": 12,
      "icone_url": "https://bloodpedia.vercel.app/w/images/b/bb/M%C3%ADssil_de_Luz.png"
     },
     {
@@ -606,6 +688,7 @@
      "slug": "missil-de-gelo",
      "tipo": "Ataque",
      "nivel": 3,
+     "mana": 12,
      "icone_url": "https://bloodpedia.vercel.app/w/images/5/51/M%C3%ADssil_de_Gelo.png"
     },
     {
@@ -613,6 +696,7 @@
      "slug": "cura-de-veneno",
      "tipo": "Cura",
      "nivel": 4,
+     "mana": 4,
      "icone_url": "https://bloodpedia.vercel.app/w/images/5/56/Cura_de_Veneno.png"
     },
     {
@@ -620,6 +704,7 @@
      "slug": "recuperacao-de-mana",
      "tipo": "Cura",
      "nivel": 5,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/b/b3/Recupera%C3%A7%C3%A3o_de_Mana.png"
     },
     {
@@ -627,6 +712,7 @@
      "slug": "raio-de-luz",
      "tipo": "Ataque",
      "nivel": 8,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/b/b9/Raio_de_Luz.png"
     },
     {
@@ -634,6 +720,7 @@
      "slug": "marca-subzero",
      "tipo": "Ataque",
      "nivel": 8,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/f/f6/Marca_Subzero.png"
     },
     {
@@ -641,6 +728,7 @@
      "slug": "cura-divina",
      "tipo": "Cura",
      "nivel": 8,
+     "mana": 16,
      "icone_url": "https://bloodpedia.vercel.app/w/images/f/fb/Cura_Divina.png"
     },
     {
@@ -648,6 +736,7 @@
      "slug": "caminho-de-espinhos",
      "tipo": "Ataque",
      "nivel": 8,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/8/8d/Caminho_de_Espinhos.png"
     },
     {
@@ -655,6 +744,7 @@
      "slug": "estalagmite-de-gelo",
      "tipo": "Ataque",
      "nivel": 12,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/9/93/Estalagmite_de_Gelo.png"
     },
     {
@@ -662,6 +752,7 @@
      "slug": "pedra-esmagadora",
      "tipo": "Ataque",
      "nivel": 12,
+     "mana": 37,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/09/Pedra_Esmagadora.png"
     },
     {
@@ -669,6 +760,7 @@
      "slug": "plasma-de-luz",
      "tipo": "Ataque",
      "nivel": 12,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/3/3f/Plasma_de_Luz.png"
     },
     {
@@ -676,6 +768,7 @@
      "slug": "aumento-de-velocidade",
      "tipo": "Suporte",
      "nivel": 13,
+     "mana": 40,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/0d/Aumento_de_Velocidade.png"
     },
     {
@@ -683,6 +776,7 @@
      "slug": "cura-de-paralisia",
      "tipo": "Cura",
      "nivel": 15,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/05/Cura_de_Paralisia.png"
     },
     {
@@ -690,6 +784,7 @@
      "slug": "escudo-de-mana",
      "tipo": "Suporte",
      "nivel": 16,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/c/c6/Escudo_de_Mana.png"
     },
     {
@@ -697,6 +792,7 @@
      "slug": "summon-de-criatura",
      "tipo": "Suporte",
      "nivel": 16,
+     "mana": 80,
      "icone_url": "https://bloodpedia.vercel.app/w/images/d/de/Summon_de_Criatura.png"
     },
     {
@@ -704,6 +800,7 @@
      "slug": "totem-da-vitalidade",
      "tipo": "Suporte",
      "nivel": 16,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/1/1f/Totem_da_Vitalidade.png"
     },
     {
@@ -711,6 +808,7 @@
      "slug": "totem-da-protecao",
      "tipo": "Suporte",
      "nivel": 20,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/2/22/Totem_da_Prote%C3%A7%C3%A3o.png"
     },
     {
@@ -718,6 +816,7 @@
      "slug": "totem-da-intuicao",
      "tipo": "Suporte",
      "nivel": 20,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/a/a6/Totem_da_Intui%C3%A7%C3%A3o.png"
     },
     {
@@ -725,6 +824,7 @@
      "slug": "prisao-de-espinhos",
      "tipo": "Ataque",
      "nivel": 24,
+     "mana": 40,
      "icone_url": "https://bloodpedia.vercel.app/w/images/b/b2/Pris%C3%A3o_de_Espinhos.png"
     },
     {
@@ -732,6 +832,7 @@
      "slug": "pilar-de-pedra",
      "tipo": "Ataque",
      "nivel": 28,
+     "mana": 40,
      "icone_url": "https://bloodpedia.vercel.app/w/images/1/1b/Pilar_de_Pedra.png"
     },
     {
@@ -739,6 +840,7 @@
      "slug": "barreira-subzero",
      "tipo": "Suporte",
      "nivel": 30,
+     "mana": 15,
      "icone_url": "https://bloodpedia.vercel.app/w/images/b/b4/Barreira_Subzero.png"
     },
     {
@@ -746,6 +848,7 @@
      "slug": "totem-da-forca",
      "tipo": "Suporte",
      "nivel": 30,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/03/Totem_da_For%C3%A7a.png"
     },
     {
@@ -753,6 +856,7 @@
      "slug": "totem-da-sabedoria",
      "tipo": "Suporte",
      "nivel": 30,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/d/d2/Totem_da_Sabedoria.png"
     },
     {
@@ -760,6 +864,7 @@
      "slug": "onda-de-cristais",
      "tipo": "Ataque",
      "nivel": 30,
+     "mana": 45,
      "icone_url": "https://bloodpedia.vercel.app/w/images/6/64/Onda_de_Cristais.png"
     },
     {
@@ -767,6 +872,7 @@
      "slug": "torre-de-gelo",
      "tipo": "Suporte",
      "nivel": 32,
+     "mana": 50,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/0a/Torre_de_Gelo.png"
     },
     {
@@ -774,6 +880,7 @@
      "slug": "brilho-intenso",
      "tipo": "Ataque",
      "nivel": 34,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/a/a4/Brilho_Intenso.png"
     },
     {
@@ -781,6 +888,7 @@
      "slug": "parede-de-veneno",
      "tipo": "Ataque",
      "nivel": 36,
+     "mana": 60,
      "icone_url": "https://bloodpedia.vercel.app/w/images/d/df/Parede_de_Veneno.png"
     },
     {
@@ -788,6 +896,7 @@
      "slug": "barreira-de-luz",
      "tipo": "Suporte",
      "nivel": 36,
+     "mana": 8,
      "icone_url": "https://bloodpedia.vercel.app/w/images/b/b0/Barreira_de_Luz.png"
     },
     {
@@ -795,6 +904,7 @@
      "slug": "purificacao",
      "tipo": "Suporte",
      "nivel": 62,
+     "mana": 45,
      "icone_url": "https://bloodpedia.vercel.app/w/images/9/9a/Purifica%C3%A7%C3%A3o.png"
     },
     {
@@ -802,6 +912,7 @@
      "slug": "ressuscitacao",
      "tipo": "Suporte",
      "nivel": 65,
+     "mana": 200,
      "icone_url": "https://bloodpedia.vercel.app/w/images/5/5f/Ressuscita%C3%A7%C3%A3o.png"
     },
     {
@@ -809,6 +920,7 @@
      "slug": "terremoto",
      "tipo": "Ataque",
      "nivel": 65,
+     "mana": 100,
      "icone_url": "https://bloodpedia.vercel.app/w/images/5/5d/Terremoto.png"
     },
     {
@@ -816,6 +928,7 @@
      "slug": "nevasca",
      "tipo": "Ataque",
      "nivel": 65,
+     "mana": 100,
      "icone_url": "https://bloodpedia.vercel.app/w/images/b/b5/Nevasca.png"
     },
     {
@@ -823,6 +936,7 @@
      "slug": "luz-sagrada",
      "tipo": "Ataque",
      "nivel": 65,
+     "mana": 100,
      "icone_url": "https://bloodpedia.vercel.app/w/images/3/3c/Luz_Sagrada.png"
     }
    ]
@@ -837,6 +951,7 @@
      "slug": "primeiros-socorros",
      "tipo": "Cura",
      "nivel": 2,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/a/a4/Primeiros_Socorros.png"
     },
     {
@@ -844,6 +959,7 @@
      "slug": "missil-das-trevas",
      "tipo": "Ataque",
      "nivel": 3,
+     "mana": 12,
      "icone_url": "https://bloodpedia.vercel.app/w/images/f/fb/M%C3%ADssil_das_Trevas.png"
     },
     {
@@ -851,6 +967,7 @@
      "slug": "faisca",
      "tipo": "Ataque",
      "nivel": 3,
+     "mana": 12,
      "icone_url": "https://bloodpedia.vercel.app/w/images/e/eb/Fa%C3%ADsca.png"
     },
     {
@@ -858,6 +975,7 @@
      "slug": "missil-de-fogo",
      "tipo": "Ataque",
      "nivel": 3,
+     "mana": 12,
      "icone_url": "https://bloodpedia.vercel.app/w/images/6/6c/M%C3%ADssil_de_Fogo.png"
     },
     {
@@ -865,6 +983,7 @@
      "slug": "cura-de-veneno",
      "tipo": "Cura",
      "nivel": 4,
+     "mana": 4,
      "icone_url": "https://bloodpedia.vercel.app/w/images/5/56/Cura_de_Veneno.png"
     },
     {
@@ -872,6 +991,7 @@
      "slug": "recuperacao-de-mana",
      "tipo": "Cura",
      "nivel": 5,
+     "mana": 0,
      "icone_url": "https://bloodpedia.vercel.app/w/images/b/b3/Recupera%C3%A7%C3%A3o_de_Mana.png"
     },
     {
@@ -879,6 +999,7 @@
      "slug": "serpente-de-fogo",
      "tipo": "Ataque",
      "nivel": 8,
+     "mana": 32,
      "icone_url": "https://bloodpedia.vercel.app/w/images/d/d1/Serpente_de_Fogo.png"
     },
     {
@@ -886,6 +1007,7 @@
      "slug": "magnetico-feroz",
      "tipo": "Ataque",
      "nivel": 8,
+     "mana": 27,
      "icone_url": "https://bloodpedia.vercel.app/w/images/f/fe/Magn%C3%A9tico_Feroz.png"
     },
     {
@@ -893,6 +1015,7 @@
      "slug": "escuridao-contaminante",
      "tipo": "Ataque",
      "nivel": 8,
+     "mana": 25,
      "icone_url": "https://bloodpedia.vercel.app/w/images/c/c9/Escurid%C3%A3o_Contaminante.png"
     },
     {
@@ -900,6 +1023,7 @@
      "slug": "trovao",
      "tipo": "Ataque",
      "nivel": 12,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/c/c7/Trov%C3%A3o.png"
     },
     {
@@ -907,6 +1031,7 @@
      "slug": "bola-das-trevas",
      "tipo": "Ataque",
      "nivel": 12,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/9/91/Bola_das_Trevas.png"
     },
     {
@@ -914,6 +1039,7 @@
      "slug": "bola-de-fogo",
      "tipo": "Ataque",
      "nivel": 12,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/02/Bola_de_Fogo.png"
     },
     {
@@ -921,6 +1047,7 @@
      "slug": "aumento-de-velocidade",
      "tipo": "Suporte",
      "nivel": 13,
+     "mana": 40,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/0d/Aumento_de_Velocidade.png"
     },
     {
@@ -928,6 +1055,7 @@
      "slug": "cura-de-paralisia",
      "tipo": "Cura",
      "nivel": 15,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/05/Cura_de_Paralisia.png"
     },
     {
@@ -935,6 +1063,7 @@
      "slug": "cura",
      "tipo": "Cura",
      "nivel": 15,
+     "mana": 35,
      "icone_url": "https://bloodpedia.vercel.app/w/images/a/a7/Cura.png"
     },
     {
@@ -942,6 +1071,7 @@
      "slug": "eletrocutar",
      "tipo": "Ataque",
      "nivel": 18,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/9/9c/Eletrocutar.png"
     },
     {
@@ -949,6 +1079,7 @@
      "slug": "queimacao",
      "tipo": "Ataque",
      "nivel": 18,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/3/33/Queima%C3%A7%C3%A3o.png"
     },
     {
@@ -956,6 +1087,7 @@
      "slug": "maldicao",
      "tipo": "Ataque",
      "nivel": 18,
+     "mana": 30,
      "icone_url": "https://bloodpedia.vercel.app/w/images/a/a6/Maldi%C3%A7%C3%A3o.png"
     },
     {
@@ -963,6 +1095,7 @@
      "slug": "manipulacao-de-fogo",
      "tipo": "Suporte",
      "nivel": 22,
+     "mana": 120,
      "icone_url": "https://bloodpedia.vercel.app/w/images/5/54/Manipula%C3%A7%C3%A3o_de_Fogo.png"
     },
     {
@@ -970,6 +1103,7 @@
      "slug": "manipulacao-das-trevas",
      "tipo": "Suporte",
      "nivel": 22,
+     "mana": 120,
      "icone_url": "https://bloodpedia.vercel.app/w/images/6/60/Manipula%C3%A7%C3%A3o_das_Trevas.png"
     },
     {
@@ -977,6 +1111,7 @@
      "slug": "manipulacao-de-ar",
      "tipo": "Suporte",
      "nivel": 22,
+     "mana": 120,
      "icone_url": "https://bloodpedia.vercel.app/w/images/4/40/Manipula%C3%A7%C3%A3o_de_Ar.png"
     },
     {
@@ -984,6 +1119,7 @@
      "slug": "esfera-negra",
      "tipo": "Ataque",
      "nivel": 24,
+     "mana": 10,
      "icone_url": "https://bloodpedia.vercel.app/w/images/6/6d/Esfera_Negra.png"
     },
     {
@@ -991,6 +1127,7 @@
      "slug": "lanca-chamas",
      "tipo": "Ataque",
      "nivel": 28,
+     "mana": 45,
      "icone_url": "https://bloodpedia.vercel.app/w/images/f/f8/Lan%C3%A7a-Chamas.png"
     },
     {
@@ -998,6 +1135,7 @@
      "slug": "ciclone",
      "tipo": "Ataque",
      "nivel": 28,
+     "mana": 45,
      "icone_url": "https://bloodpedia.vercel.app/w/images/8/86/Ciclone.png"
     },
     {
@@ -1005,6 +1143,7 @@
      "slug": "raio-das-trevas",
      "tipo": "Ataque",
      "nivel": 28,
+     "mana": 40,
      "icone_url": "https://bloodpedia.vercel.app/w/images/c/cf/Raio_das_Trevas.png"
     },
     {
@@ -1012,6 +1151,7 @@
      "slug": "protecao-de-trevas",
      "tipo": "Suporte",
      "nivel": 30,
+     "mana": 100,
      "icone_url": "https://bloodpedia.vercel.app/w/images/1/15/Prote%C3%A7%C3%A3o_de_Trevas.png"
     },
     {
@@ -1019,6 +1159,7 @@
      "slug": "protecao-de-fogo",
      "tipo": "Suporte",
      "nivel": 30,
+     "mana": 100,
      "icone_url": "https://bloodpedia.vercel.app/w/images/9/9e/Prote%C3%A7%C3%A3o_de_Fogo.png"
     },
     {
@@ -1026,6 +1167,7 @@
      "slug": "protecao-de-ar",
      "tipo": "Suporte",
      "nivel": 30,
+     "mana": 100,
      "icone_url": "https://bloodpedia.vercel.app/w/images/4/41/Prote%C3%A7%C3%A3o_de_Ar.png"
     },
     {
@@ -1033,6 +1175,7 @@
      "slug": "manipulacao-de-esferas",
      "tipo": "Ataque",
      "nivel": 34,
+     "mana": 20,
      "icone_url": "https://bloodpedia.vercel.app/w/images/0/0e/Manipula%C3%A7%C3%A3o_de_Esferas.png"
     },
     {
@@ -1040,6 +1183,7 @@
      "slug": "descarga-eletrica",
      "tipo": "Ataque",
      "nivel": 35,
+     "mana": 52,
      "icone_url": "https://bloodpedia.vercel.app/w/images/e/e0/Descarga_El%C3%A9trica.png"
     },
     {
@@ -1047,6 +1191,7 @@
      "slug": "igniz-suicida",
      "tipo": "Ataque",
      "nivel": 35,
+     "mana": 50,
      "icone_url": "https://bloodpedia.vercel.app/w/images/b/b2/Igniz_Suicida.png"
     },
     {
@@ -1054,6 +1199,7 @@
      "slug": "parede-de-fogo",
      "tipo": "Ataque",
      "nivel": 36,
+     "mana": 60,
      "icone_url": "https://bloodpedia.vercel.app/w/images/f/f2/Parede_de_Fogo.png"
     },
     {
@@ -1061,6 +1207,7 @@
      "slug": "campo-de-energia",
      "tipo": "Ataque",
      "nivel": 36,
+     "mana": 60,
      "icone_url": "https://bloodpedia.vercel.app/w/images/7/75/Campo_de_Energia.png"
     },
     {
@@ -1068,6 +1215,7 @@
      "slug": "sono-profundo",
      "tipo": "Suporte",
      "nivel": 36,
+     "mana": 50,
      "icone_url": "https://bloodpedia.vercel.app/w/images/f/fa/Sono_Profundo.png"
     },
     {
@@ -1075,6 +1223,7 @@
      "slug": "barreira-arcana",
      "tipo": "Suporte",
      "nivel": 50,
+     "mana": 130,
      "icone_url": "https://bloodpedia.vercel.app/w/images/7/79/Barreira_Arcana.png"
     },
     {
@@ -1082,6 +1231,7 @@
      "slug": "onda-sombria",
      "tipo": "Ataque",
      "nivel": 65,
+     "mana": 60,
      "icone_url": "https://bloodpedia.vercel.app/w/images/f/fb/Onda_Sombria.png"
     },
     {
@@ -1089,6 +1239,7 @@
      "slug": "explosao-de-meteoros",
      "tipo": "Ataque",
      "nivel": 65,
+     "mana": 100,
      "icone_url": "https://bloodpedia.vercel.app/w/images/7/77/Explos%C3%A3o_de_Meteoros.png"
     },
     {
@@ -1096,6 +1247,7 @@
      "slug": "marcacao-da-morte",
      "tipo": "Ataque",
      "nivel": 65,
+     "mana": 80,
      "icone_url": "https://bloodpedia.vercel.app/w/images/8/84/Marca%C3%A7%C3%A3o_da_Morte.png"
     },
     {
@@ -1103,6 +1255,7 @@
      "slug": "tempestade",
      "tipo": "Ataque",
      "nivel": 65,
+     "mana": 100,
      "icone_url": "https://bloodpedia.vercel.app/w/images/9/92/Tempestade.png"
     }
    ]

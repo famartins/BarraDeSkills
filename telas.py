@@ -21,35 +21,68 @@ from PIL import Image
 import config
 import localizar
 import sistema
+import tema
 import wiki
 
-ctk.set_appearance_mode("dark")
-ctk.set_default_color_theme("dark-blue")
-
-VERSION = "0.5.3"
+VERSION = "0.6"
 REPO_URL = "https://github.com/famartins/BarraDeSkills"
 ICON_PATH = os.path.join(config.RES_DIR, "dados", "icone.ico")
 
-# cores
-ACCENT = "#b3261e"
-ACCENT_HOVER = "#8e1c16"
-BAR_COLORS = (ACCENT, "#2563eb")         # selo da barra 1 e da barra 2
-BG = "#121215"
-CARD = "#1d1d22"
-CARD_HOVER = "#26262d"
-BORDER = "#2f2f37"
-TEXT = "#ececf1"
-DIM = "#9a9aa8"
-OK = "#3fb950"
-WARN = "#d29922"
-ERR = "#f85149"
-TIPO_COR = {"Ataque": "#9a3412", "Cura": "#166534", "Suporte": "#1e40af"}
+# cores: tokens do tema (tema.py)
+ACCENT, ACCENT_HOVER, ON_ACCENT = tema.ACCENT, tema.ACCENT_HOVER, tema.ON_ACCENT
+BAR_COLORS, ON_BAR = tema.BAR_COLORS, tema.ON_BAR
+BG = tema.BG
+CARD, CARD_HOVER = tema.SURFACE, tema.SURFACE_HOVER
+BORDER, SECONDARY, HIGHLIGHT = tema.BORDER, tema.SECONDARY, tema.HIGHLIGHT
+TEXT, DIM = tema.TEXT, tema.DIM
+OK, WARN, ERR = tema.OK, tema.WARN, tema.ERR
+TIPO_COR = tema.TIPO_COR
 
-NONE_ICON = Image.new("RGB", (44, 44), "#2a2a31")
+NONE_ICON = Image.new("RGB", (44, 44), tema.BORDER)
+FAMILY = tema.load_fonts(config.RES_DIR)
 
 
-def F(size=13, weight="normal"):
-    return ctk.CTkFont(family="Segoe UI", size=size, weight=weight)
+def apply_theme():
+    """Cores e cantos padrao de todos os componentes do CustomTkinter."""
+    ctk.set_appearance_mode("dark")
+    ctk.set_default_color_theme("dark-blue")
+    t = ctk.ThemeManager.theme
+
+    def put(widget, **kw):
+        for k, v in kw.items():
+            t[widget][k] = [v, v] if isinstance(v, str) and v != "transparent" else v
+
+    put("CTk", fg_color=BG)
+    put("CTkToplevel", fg_color=BG)
+    put("CTkFrame", fg_color=CARD, top_fg_color=CARD, border_color=BORDER,
+        corner_radius=tema.RADIUS)
+    put("CTkButton", fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color=ON_ACCENT,
+        border_color=BORDER, text_color_disabled=DIM, corner_radius=tema.RADIUS_SM)
+    put("CTkLabel", text_color=TEXT)
+    put("CTkEntry", fg_color=BG, border_color=BORDER, text_color=TEXT,
+        placeholder_text_color=DIM, corner_radius=tema.RADIUS_SM)
+    put("CTkSwitch", fg_color=BORDER, progress_color=ACCENT, button_color=TEXT,
+        button_hover_color="#FFFFFF", text_color=TEXT, text_color_disabled=DIM)
+    put("CTkSlider", fg_color=BORDER, progress_color=ACCENT, button_color=ACCENT,
+        button_hover_color=ACCENT_HOVER)
+    put("CTkScrollbar", fg_color="transparent", button_color=SECONDARY,
+        button_hover_color=ACCENT)
+    put("CTkScrollableFrame", label_fg_color=CARD)
+    put("CTkSegmentedButton", fg_color=BG, selected_color=ACCENT,
+        selected_hover_color=ACCENT_HOVER, unselected_color=BG,
+        unselected_hover_color=CARD_HOVER, text_color=TEXT, text_color_disabled=DIM)
+    put("DropdownMenu", fg_color=CARD, hover_color=CARD_HOVER, text_color=TEXT)
+    for osname in ("Windows", "macOS", "Linux"):
+        if osname in t["CTkFont"]:
+            t["CTkFont"][osname]["family"] = FAMILY
+
+
+apply_theme()
+
+
+def F(size=tema.BODY, weight="normal"):
+    # "bold" com a Inter carregada sai SemiBold (600): so ha os pesos 400 e 600
+    return ctk.CTkFont(family=FAMILY, size=size, weight=weight)
 
 
 def cimg(pil, size):
@@ -66,20 +99,140 @@ def fit(pil, box):
 def accent_button(master, text, command, **kw):
     kw.setdefault("height", 36)
     return ctk.CTkButton(master, text=text, command=command, fg_color=ACCENT,
-                         hover_color=ACCENT_HOVER, font=F(13, "bold"), **kw)
+                         hover_color=ACCENT_HOVER, text_color=ON_ACCENT,
+                         font=F(13, "bold"), **kw)
 
 
 def ghost_button(master, text, command, **kw):
     kw.setdefault("height", 32)
     return ctk.CTkButton(master, text=text, command=command, fg_color="transparent",
-                         border_width=1, border_color=BORDER, hover_color=CARD_HOVER,
+                         border_width=1, border_color=SECONDARY, hover_color=CARD_HOVER,
                          text_color=TEXT, font=F(12), **kw)
 
 
+def set_enabled(button, ok):
+    """Botao de acento ligado/desligado (desligado: superficie e texto apagado)."""
+    button.configure(state="normal" if ok else "disabled",
+                     fg_color=ACCENT if ok else BORDER)
+
+
+class Choice(ctk.CTkFrame):
+    """Escolha entre opcoes, com o texto escuro sobre o acento na selecionada.
+    style="segment": botoes colados numa moldura (Barra 1 | Barra 2).
+    style="chip": pilulas separadas (filtros Todas, Ataque...).
+    Mesma interface do CTkSegmentedButton: get(), set(valor) e command(valor)."""
+
+    def __init__(self, master, values, command=None, style="segment", **kw):
+        chip = style == "chip"
+        super().__init__(master, fg_color="transparent" if chip else BG,
+                         corner_radius=tema.RADIUS_SM, border_width=0 if chip else 1,
+                         border_color=BORDER, **kw)
+        self.command, self.chip, self.value = command, chip, None
+        self.buttons = {}
+        for v in values:
+            b = ctk.CTkButton(self, text=v, height=30, font=F(12),
+                              corner_radius=tema.RADIUS_PILL if chip else tema.RADIUS_SM - 2,
+                              border_width=1 if chip else 0, border_color=BORDER,
+                              width=0 if chip else 96,
+                              command=lambda v=v: self._click(v))
+            b.pack(side="left", padx=(0, 6) if chip else 2, pady=0 if chip else 2)
+            self.buttons[v] = b
+        self.set(values[0])
+
+    def _click(self, v):
+        self.set(v)
+        if self.command:
+            self.command(v)
+
+    def set(self, v):
+        self.value = v
+        for name, b in self.buttons.items():
+            on = name == v
+            b.configure(fg_color=ACCENT if on else (CARD if self.chip else BG),
+                        hover_color=ACCENT_HOVER if on else CARD_HOVER,
+                        text_color=ON_ACCENT if on else TEXT,
+                        border_color=ACCENT if on else BORDER,
+                        font=F(12, "bold" if on else "normal"))
+
+    def get(self):
+        return self.value
+
+
 def segmented(master, values, command=None, **kw):
-    return ctk.CTkSegmentedButton(master, values=values, font=F(12), command=command,
-                                  selected_color=ACCENT, selected_hover_color=ACCENT_HOVER,
-                                  **kw)
+    return Choice(master, values, command=command, **kw)
+
+
+class Tabs(ctk.CTkFrame):
+    """Abas no estilo segmentado com um indicador embaixo da ativa (acento)."""
+
+    def __init__(self, master, names, **kw):
+        super().__init__(master, fg_color="transparent", **kw)
+        head = ctk.CTkFrame(self, fg_color="transparent")
+        head.pack(fill="x")
+        ctk.CTkFrame(self, fg_color=BORDER, height=1, corner_radius=0).pack(fill="x")
+        self.body = ctk.CTkFrame(self, fg_color=CARD, corner_radius=tema.RADIUS)
+        self.body.pack(fill="both", expand=True, pady=(12, 0))
+        self.frames, self.heads, self.current = {}, {}, None
+        for n in names:
+            col = ctk.CTkFrame(head, fg_color="transparent", width=1, height=1)
+            col.pack(side="left", padx=(0, 4))
+            b = ctk.CTkButton(col, text=n, height=34, fg_color="transparent",
+                              width=F(13, "bold").measure(n) + 28,
+                              hover_color=CARD, text_color=DIM, font=F(13),
+                              corner_radius=tema.RADIUS_SM, command=lambda n=n: self.set(n))
+            b.pack(padx=2)
+            bar = ctk.CTkFrame(col, width=1, height=3, corner_radius=2,
+                               fg_color="transparent")
+            bar.pack(fill="x", padx=8)
+            self.heads[n] = (b, bar)
+            self.frames[n] = ctk.CTkFrame(self.body, fg_color="transparent")
+
+    def tab(self, name):
+        return self.frames[name]
+
+    def set(self, name):
+        if self.current:
+            self.frames[self.current].pack_forget()
+        self.current = name
+        self.frames[name].pack(fill="both", expand=True, padx=16, pady=14)
+        for n, (b, bar) in self.heads.items():
+            on = n == name
+            b.configure(text_color=TEXT if on else DIM, font=F(13, "bold" if on else "normal"))
+            bar.configure(fg_color=ACCENT if on else "transparent")
+
+
+class Tooltip:
+    """Caixinha que aparece ao passar o mouse (ex.: dados de uma magia)."""
+
+    def __init__(self, root):
+        self.root = root
+        self.win = None
+
+    def show(self, widget, title, lines):
+        self.hide()
+        win = self.win = ctk.CTkToplevel(self.root)
+        win.overrideredirect(True)
+        win.attributes("-topmost", True)
+        win.configure(fg_color=SECONDARY)
+        box = ctk.CTkFrame(win, fg_color=BG, corner_radius=0)
+        box.pack(padx=1, pady=1)
+        ctk.CTkLabel(box, text=title, font=F(13, "bold"), text_color=HIGHLIGHT,
+                     anchor="w").pack(fill="x", padx=12, pady=(8, 2))
+        for ln in lines:
+            ctk.CTkLabel(box, text=ln, font=F(tema.CAPTION), text_color=TEXT,
+                         anchor="w", justify="left").pack(fill="x", padx=12)
+        ctk.CTkFrame(box, height=8, fg_color="transparent").pack()
+        x = widget.winfo_rootx() + widget.winfo_width() + 6
+        y = widget.winfo_rooty()
+        win.geometry("+%d+%d" % (x, y))
+
+    def hide(self):
+        if self.win is not None:
+            try:
+                self.win.destroy()
+            except Exception:
+                pass
+            self.win = None
 
 
 def bind_tree(widget, event, func):
@@ -90,8 +243,9 @@ def bind_tree(widget, event, func):
 
 
 def hover_card(card, on_click):
+    """Card clicavel: no hover a borda acende e o card "sobe" (superficie mais clara)."""
     def enter(_e):
-        card.configure(border_color=ACCENT, fg_color=CARD_HOVER, cursor="hand2")
+        card.configure(border_color=SECONDARY, fg_color=CARD_HOVER, cursor="hand2")
 
     def leave(_e):
         card.configure(border_color=BORDER, fg_color=CARD)
@@ -108,19 +262,22 @@ def load_icon(voc_slug, magia):
         return None
 
 
-PARCHMENT = (214, 200, 178, 255)
+ART_INK = (184, 245, 216)     # traco da arte (verde-menta claro)
 
 
 def load_art(voc):
-    """Arte da vocacao (desenho a lapis com transparencia) sobre fundo de pergaminho,
-    senao ela some no tema escuro."""
+    """Arte da vocacao (desenho a lapis) em tons de verde: o traco vira verde-menta
+    claro com fundo transparente, como giz sobre o card verde-escuro."""
     try:
         art = Image.open(wiki.art_path(voc)).convert("RGBA")
     except OSError:
         return None
-    bg = Image.new("RGBA", art.size, PARCHMENT)
-    bg.alpha_composite(art)
-    return bg.convert("RGB")
+    paper = Image.new("RGBA", art.size, (255, 255, 255, 255))
+    paper.alpha_composite(art)
+    ink = paper.convert("L").point(lambda v: round(255 * (1 - v / 255) ** 0.8))
+    out = Image.new("RGBA", art.size, ART_INK + (255,))
+    out.putalpha(ink)
+    return out
 
 
 def shortcut_feedback(app, label):
@@ -136,7 +293,8 @@ def shortcut_feedback(app, label):
 
 def ask_text(parent, title, text):
     dlg = ctk.CTkInputDialog(title=title, text=text, font=F(13),
-                             button_fg_color=ACCENT, button_hover_color=ACCENT_HOVER)
+                             button_fg_color=ACCENT, button_hover_color=ACCENT_HOVER,
+                             button_text_color=ON_ACCENT)
     try:
         dlg.attributes("-topmost", True)
     except Exception:
@@ -268,7 +426,7 @@ class Wizard(Window):
                                                       padx=8, pady=8, sticky="n")
             cards += 1
 
-        new = ctk.CTkFrame(grid, width=210, height=250, fg_color=CARD, corner_radius=14,
+        new = ctk.CTkFrame(grid, width=210, height=280, fg_color=CARD, corner_radius=14,
                            border_width=2, border_color=BORDER)
         new.grid(row=cards // 4, column=cards % 4, padx=8, pady=8, sticky="n")
         new.pack_propagate(False)
@@ -291,7 +449,7 @@ class Wizard(Window):
                          width=220).pack(side="right")
 
     def _profile_card(self, parent, name, data):
-        card = ctk.CTkFrame(parent, width=210, height=250, fg_color=CARD, corner_radius=14,
+        card = ctk.CTkFrame(parent, width=210, height=280, fg_color=CARD, corner_radius=14,
                             border_width=2, border_color=BORDER)
         card.pack_propagate(False)
         voc = wiki.find_vocacao(self.vocacoes, data.get("vocacao") or "")
@@ -304,8 +462,9 @@ class Wizard(Window):
         ctk.CTkLabel(card, text=name, font=F(15, "bold"), text_color=TEXT,
                      wraplength=190).pack()
         if active:
-            ctk.CTkLabel(card, text="último usado", font=F(10), text_color=OK,
-                         height=14).pack()
+            ctk.CTkLabel(card, text=" último usado ", font=F(10, "bold"),
+                         text_color=ON_ACCENT, fg_color=HIGHLIGHT, corner_radius=8,
+                         height=16).pack(pady=(2, 0))
         n = sum(len(b["regions"]) for b in data.get("bars", []))
         info = ("%s · %d magias" % (voc["nome"], n)) if voc else (
             "%d skills" % n if n else "Ainda não configurado")
@@ -425,12 +584,17 @@ class Wizard(Window):
 
         bar2 = ctk.CTkFrame(page, fg_color="transparent")
         bar2.pack(fill="x", pady=(0, 8))
+        self.search = ctk.CTkEntry(bar2, placeholder_text="Buscar magia pelo nome",
+                                   font=F(13), height=32, width=240, fg_color=CARD)
+        self.search.pack(side="left", padx=(0, 12))
+        self.search.bind("<KeyRelease>", lambda _e: self.layout_cards())
         self.filter = segmented(bar2, ["Todas", "Ataque", "Cura", "Suporte"],
-                                command=lambda _v: self.layout_cards())
+                                command=lambda _v: self.layout_cards(), style="chip")
         self.filter.set("Todas")
         self.filter.pack(side="left")
         self.count_lbl = ctk.CTkLabel(bar2, text="", font=F(13), text_color=DIM)
         self.count_lbl.pack(side="right")
+        self.tip = Tooltip(self)
 
         self.scroll = ctk.CTkScrollableFrame(page, fg_color=CARD, corner_radius=12)
         self.scroll.pack(fill="both", expand=True)
@@ -472,22 +636,33 @@ class Wizard(Window):
             self.images[m["slug"]] = img
         icon = ctk.CTkLabel(card, text="", image=cimg(img or NONE_ICON, (44, 44)))
         icon.pack(pady=(12, 4))
-        ctk.CTkLabel(card, text=m["nome"], font=F(12, "bold"), text_color=TEXT,
-                     wraplength=124).pack()
+        # etiqueta sempre no rodape: nomes de 1 ou 2 linhas nao desalinham os cards
         info = ctk.CTkFrame(card, fg_color="transparent")
-        info.pack(pady=(2, 0))
+        info.pack(side="bottom", pady=(0, 10))
+        ctk.CTkLabel(card, text=m["nome"], font=F(12, "bold"), text_color=TEXT,
+                     wraplength=124).pack(expand=True)
         ctk.CTkLabel(info, text=" %s " % m["tipo"], font=F(10), corner_radius=6,
                      fg_color=TIPO_COR.get(m["tipo"], BORDER), text_color=TEXT,
                      height=18).pack(side="left", padx=2)
         if m["nivel"]:
             ctk.CTkLabel(info, text="Nv %d" % m["nivel"], font=F(10),
                          text_color=DIM).pack(side="left", padx=2)
-        badge = ctk.CTkLabel(card, text="", width=34, height=24, corner_radius=12,
-                             fg_color=ACCENT, text_color="white", font=F(11, "bold"))
+        badge = ctk.CTkLabel(card, text="", width=34, height=22, corner_radius=11,
+                             fg_color=ACCENT, text_color=ON_ACCENT, font=F(11, "bold"))
         card.icon, card.badge = icon, badge
         bind_tree(card, "<Button-1>", lambda _e, s=m["slug"]: self.toggle(s))
-        bind_tree(card, "<Enter>", lambda _e, c=card: c.configure(cursor="hand2"))
+        bind_tree(card, "<Enter>", lambda _e, c=card, m=m: self._card_enter(c, m))
+        bind_tree(card, "<Leave>", lambda _e: self.tip.hide())
         return card
+
+    def _card_enter(self, card, m):
+        card.configure(cursor="hand2")
+        lines = ["%s  ·  nível mínimo %d" % (m["tipo"], m["nivel"]) if m.get("nivel")
+                 else m["tipo"]]
+        if m.get("mana"):
+            lines.append("Mana: %d" % m["mana"])
+        lines.append("Recarga: veja no jogo (a wiki não informa)")
+        self.tip.show(card, m["nome"], lines)
 
     def _icon_ready(self, m):
         img = load_icon(self.voc["slug"], m)
@@ -504,11 +679,14 @@ class Wizard(Window):
 
     def layout_cards(self):
         tipo = self.filter.get()
+        busca = wiki.normalize(self.search.get()) if hasattr(self, "search") else ""
         for card in self.cards.values():
             card.grid_forget()
         i = 0
         for m in self.voc["magias"]:
             if tipo != "Todas" and m["tipo"] != tipo:
+                continue
+            if busca and busca not in wiki.normalize(m["nome"]):
                 continue
             self.cards[m["slug"]].grid(row=i // 6, column=i % 6, padx=6, pady=6)
             i += 1
@@ -552,16 +730,14 @@ class Wizard(Window):
             color = BAR_COLORS[where]
             card.configure(border_color=color,
                            fg_color=CARD_HOVER if where == self.cur_bar else BG)
-            card.badge.configure(fg_color=color,
+            card.badge.configure(fg_color=color, text_color=ON_BAR[where],
                                  text="%d·%d" % (where + 1, self.sel[where].index(slug) + 1))
             card.badge.place(x=6, y=6)
         n1, n2 = len(self.sel[0]), len(self.sel[1])
         self.only_buffs = bool(self.only_sw.get()) if hasattr(self, "only_sw") else \
             self.only_buffs
         if hasattr(self, "next_btn"):
-            ok = (n1 + n2) > 0 or self.only_buffs
-            self.next_btn.configure(state="normal" if ok else "disabled",
-                                    fg_color=ACCENT if ok else BORDER)
+            set_enabled(self.next_btn, (n1 + n2) > 0 or self.only_buffs)
             self.next_btn.configure(text="Próximo: achar na tela  →" if n1 + n2
                                     else "Concluir  ✓")
         self.count_lbl.configure(text="Barra 1: %d   ·   Barra 2: %d" % (n1, n2),
@@ -673,7 +849,7 @@ class Wizard(Window):
         btn = accent_button(self.loc_foot, "Concluir  ✓", self.finish, width=160)
         btn.pack(side="right")
         if not ready:
-            btn.configure(state="disabled", fg_color=BORDER)
+            set_enabled(btn, False)
             ctk.CTkLabel(self.loc_foot, text="Resolva os itens em amarelo/vermelho",
                          font=F(12), text_color=WARN).pack(side="right", padx=12)
 
@@ -682,7 +858,7 @@ class Wizard(Window):
         row.pack(fill="x", padx=6, pady=4)
         dim = it["removed"]
         ctk.CTkLabel(row, text="B%d" % (it["bar"] + 1), width=34, height=22, corner_radius=8,
-                     fg_color=BAR_COLORS[it["bar"]], text_color="white",
+                     fg_color=BAR_COLORS[it["bar"]], text_color=ON_BAR[it["bar"]],
                      font=F(11, "bold")).pack(side="left", padx=(10, 6))
         ctk.CTkLabel(row, text="", image=cimg(it["icon"] or NONE_ICON, (40, 40))
                      ).pack(side="left", padx=4, pady=6)
@@ -840,7 +1016,8 @@ class BuffEditor(Window):
         self.skill.set(idx)
         for i, b in self.skill_btns:
             b.configure(fg_color=ACCENT if i == idx else CARD_HOVER,
-                        hover_color=ACCENT_HOVER if i == idx else BORDER)
+                        hover_color=ACCENT_HOVER if i == idx else SECONDARY,
+                        text_color=ON_ACCENT if i == idx else TEXT)
         if fill and idx >= 0 and self.slots[idx][2] is not None \
                 and not self.name.get().strip():
             self.name.insert(0, self.slots[idx][2]["nome"])
@@ -876,11 +1053,8 @@ class Settings(Window):
 
     def __init__(self, app, tab="Personagem"):
         super().__init__(app, "Barra de Skills - Configurações", (640, 680))
-        self.tabs = ctk.CTkTabview(self, fg_color=CARD, segmented_button_selected_color=ACCENT,
-                                   segmented_button_selected_hover_color=ACCENT_HOVER)
-        self.tabs.pack(fill="both", expand=True, padx=16, pady=(10, 0))
-        for name in self.TABS:
-            self.tabs.add(name)
+        self.tabs = Tabs(self, self.TABS)
+        self.tabs.pack(fill="both", expand=True, padx=16, pady=(12, 0))
         self.build_personagem(self.tabs.tab("Personagem"))
         self.build_barras(self.tabs.tab("Barras"))
         self.build_buffs(self.tabs.tab("Buffs"))
@@ -890,7 +1064,8 @@ class Settings(Window):
         foot = ctk.CTkFrame(self, fg_color="transparent")
         foot.pack(fill="x", padx=16, pady=12)
         ctk.CTkButton(foot, text="Sair do programa", command=app.quit, fg_color="transparent",
-                      border_width=1, border_color=ERR, text_color=ERR, hover_color="#3a1515",
+                      border_width=1, border_color=ERR, text_color=ERR,
+                      hover_color=tema.ERR_HOVER,
                       font=F(12), width=140).pack(side="left")
         accent_button(foot, "Fechar", self.destroy, width=110).pack(side="right")
 
@@ -1143,18 +1318,19 @@ class Settings(Window):
                      ).pack(fill="x", pady=8)
 
         track = ctk.CTkSwitch(
-            tab, text="Acompanhar a janela do jogo: se ela mudar de lugar, as posições das "
-            "skills e dos buffs se ajustam sozinhas", font=F(12), progress_color=ACCENT,
+            tab, text="Acompanhar a janela do jogo quando ela mudar de lugar", font=F(12), progress_color=ACCENT,
             command=lambda: self._set("track_game", bool(track.get())))
         if self.app.cfg.get("track_game", True):
             track.select()
-        track.pack(anchor="w", pady=(14, 6))
+        track.pack(anchor="w", pady=(14, 0))
+        self._hint(tab, "As posições das skills e dos buffs se ajustam sozinhas.")
         self.auto_sw = ctk.CTkSwitch(
-            tab, text="Abrir com o Windows: fica no ícone perto do relógio e mostra a "
-            "escolha de personagem quando o jogo abrir", font=F(12), progress_color=ACCENT,
+            tab, text="Abrir com o Windows e esperar o jogo abrir", font=F(12), progress_color=ACCENT,
             command=lambda: self.app.set_autostart(bool(self.auto_sw.get())))
         self.sync_autostart()
-        self.auto_sw.pack(anchor="w", pady=6)
+        self.auto_sw.pack(anchor="w", pady=(10, 0))
+        self._hint(tab, "Fica no ícone perto do relógio e mostra a escolha de personagem "
+                        "quando o jogo abrir.")
         sc = ctk.CTkFrame(tab, fg_color="transparent")
         sc.pack(fill="x", pady=(8, 0))
         ghost_button(sc, "Criar atalho na Área de Trabalho e no Menu Iniciar",
@@ -1168,6 +1344,12 @@ class Settings(Window):
                          "perto do relógio. Para sair, clique com o botão direito no ícone > "
                          "Sair, ou use \"Sair do programa\" aqui embaixo.")
                      ).pack(fill="x", pady=(10, 0))
+
+    def _hint(self, parent, text):
+        """Descricao curta embaixo de um switch, alinhada com o texto dele."""
+        ctk.CTkLabel(parent, text=text, font=F(tema.CAPTION), text_color=DIM, anchor="w",
+                     justify="left", wraplength=520).pack(fill="x", padx=(52, 0),
+                                                          pady=(0, 4))
 
     def sync_autostart(self):
         if sistema.autostart_enabled():

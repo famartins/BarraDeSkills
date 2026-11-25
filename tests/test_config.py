@@ -90,5 +90,16 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(len(config.all_regions(cfg)), 3)
 
 
+
+class FundoDasBarrasTest(unittest.TestCase):
+    def test_fundo_preto_antigo_vira_o_do_tema(self):
+        import config as c
+        self.assertEqual(c.migrate({"bg": "#0b0b0b"})["bg"], "#002E34")
+
+    def test_cor_escolhida_pela_pessoa_fica(self):
+        import config as c
+        self.assertEqual(c.migrate({"bg": "#123456"})["bg"], "#123456")
+
+
 if __name__ == "__main__":
     unittest.main()
