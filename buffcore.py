@@ -74,14 +74,17 @@ class CastDetector:
     jogo aplica em todas as skills quando QUALQUER uma e usada.
     """
 
-    def __init__(self, drop=0.75, recover=0.9, window=3):
+    def __init__(self, drop=0.75, recover=0.9, span=0.5):
         self.drop = drop
         self.recover = recover
-        self.window = window
+        self.span = span      # "brusca" = em ate `span` segundos (vale para qualquer FPS)
         self.base = None      # brilho com a skill pronta
-        self.recent = []      # ultimos quadros, para exigir uma queda brusca
+        self.recent = []      # (instante, brilho) dos ultimos `span` segundos
         self.cooling = False
         self.pending = None   # instante da queda ainda nao confirmada
+        self.drop_at = None   # instante da queda atual (enquanto escuro)
+        self.last_drop = None  # inicio do ultimo escurecimento que durou >= `long` s
+        self.long = 1.5
 
     def update(self, brightness, now):
         """Recebe o brilho do quadro atual. Retorna True se o icone acabou de escurecer."""
@@ -90,17 +93,21 @@ class CastDetector:
         if self.base is None:
             self.base = b
         elif self.cooling:
+            if self.drop_at is not None and now - self.drop_at >= self.long:
+                self.last_drop = self.drop_at   # escuro por um tempo: parece uso real
             if b >= self.base * self.recover:
                 self.cooling = False
                 self.pending = None   # voltou ao normal: nao era (mais) uma recarga
-        elif b < self.base * self.drop and b < max(self.recent or [b]) * self.drop:
+        elif b < self.base * self.drop and b < max(
+                [v for _, v in self.recent] or [b]) * self.drop:
             self.cooling = True
             self.pending = now
+            self.drop_at = now
             dropped = True
         else:
             # acompanha a iluminacao normal: sobe rapido, desce devagar
             self.base += (b - self.base) * (0.3 if b > self.base else 0.02)
-        self.recent = (self.recent + [b])[-self.window:]
+        self.recent = [(t, v) for t, v in self.recent if now - t <= self.span] + [(now, b)]
         return dropped
 
 
@@ -131,6 +138,20 @@ def confirm_casts(detectors, now, min_dark=1.5, group_window=0.3, max_wait=8.0):
         out.append((i, d.pending))
         d.pending = None
     return out
+
+
+def renewal_time(since, duration, now, last_drop=None, grace=2.0):
+    """Buff ainda visivel depois do fim da contagem: foi renovado sem o programa
+    perceber o uso da skill. Retorna o novo inicio da contagem, ou None se ainda
+    nao passou do fim (+ `grace` s de folga).
+
+    Usa o ultimo escurecimento da skill durante o buff, se houver (melhor palpite
+    do instante do reuso); senao, conta a partir do fim previsto."""
+    if not duration or since is None or now - since <= duration + grace:
+        return None
+    if last_drop is not None and since + 1.0 < last_drop <= now:
+        return last_drop
+    return since + duration
 
 
 def fmt_time(seconds):
@@ -193,6 +214,10 @@ class BuffTracker:
         st = self.s.get(key)
         if st is not None and st["since"] is not None:
             st["since"] = now
+
+    def since(self, key):
+        st = self.s.get(key)
+        return st["since"] if st else None
 
     def active(self, key, now):
         st = self.s.get(key)

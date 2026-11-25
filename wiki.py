@@ -18,7 +18,7 @@ from config import BASE_DIR, RES_DIR
 DATA_PATH = os.path.join(RES_DIR, "dados", "vocacoes.json")
 CACHE_DIR = os.path.join(BASE_DIR, "cache", "icones")
 ART_DIR = os.path.join(BASE_DIR, "cache", "artes")
-USER_AGENT = "BarraDeSkills/0.5"
+USER_AGENT = "BarraDeSkills/0.5.1"
 
 
 def load_vocacoes():

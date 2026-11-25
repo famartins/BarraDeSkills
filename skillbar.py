@@ -96,7 +96,7 @@ try:
     import telas
     import wiki
     from buffcore import (BuffTracker, CastDetector, confirm_casts, expand_buff_area,
-                          find_template)
+                          find_template, renewal_time)
     from overlay import (BROWSERS, Bar, BuffWindow, Calibrator, enable_dpi_awareness,
                          grab_image, key_down, list_windows, user32, window_info,
                          window_title, VK_CONTROL, VK_MENU, VK_F10, VK_F11, VK_F12)
@@ -605,6 +605,7 @@ class SkillBar:
                 log_error("Buff %s: apareceu, contagem de %g s iniciada"
                           % (b["name"], b["duration"]))
             if self.tracker.active(b["file"], now):
+                self.check_renewal(b, now)
                 active.append(b)
             elif b["file"] in self.prev_active:
                 log_error("Buff %s: sumiu depois de %.0f s (duracao configurada: %g s)"
@@ -613,6 +614,23 @@ class SkillBar:
         self.prev_active = {b["file"] for b in active}
         self.warn_sound(active, now)
         self.show_buffs(active, now)
+
+    def check_renewal(self, b, now):
+        """Buff ainda no jogo depois do fim da contagem: foi renovado sem o programa
+        perceber o uso da skill. Reinicia a contagem em vez de piscar sem parar."""
+        last_drop = None
+        s = b.get("skill")
+        if isinstance(s, int) and 0 <= s < len(self.cast_detectors):
+            last_drop = self.cast_detectors[s].last_drop
+        new = renewal_time(self.tracker.since(b["file"]), b["duration"], now, last_drop)
+        if new is None:
+            return
+        old = self.tracker.elapsed(b["file"], now) or 0
+        self.tracker.restart(b["file"], new)
+        self.warned.discard(b["file"])
+        log_error("Buff %s: continua no jogo depois de %.0f s (duracao %g s): "
+                  "renovado, contagem reiniciada (ha %.0f s)"
+                  % (b["name"], old, b["duration"], now - new))
 
     def show_buffs(self, active, now, visible=True):
         """Distribui os buffs ativos: junto da skill (na barra dela) ou soltos."""

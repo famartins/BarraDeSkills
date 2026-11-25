@@ -7,7 +7,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from buffcore import (BuffTracker, CastDetector, confirm_casts,  # noqa: E402
-                      expand_buff_area)
+                      expand_buff_area, renewal_time)
 
 SCREEN = (0, 0, 2560, 1440)
 
@@ -102,6 +102,39 @@ class CastDetectorTest(unittest.TestCase):
     def test_programa_aberto_com_a_skill_em_recarga(self):
         sk = lambda t: 50 if t < 1 else (120 if t < 3 else 50)   # noqa: E731
         self.assertEqual(simulate([sk], 8), [(0, 3.0)])
+
+
+class CastDetectorExtraTest(unittest.TestCase):
+    def test_escurecimento_em_alguns_quadros_tambem_conta(self):
+        # o icone escurece aos poucos em 0,2 s (6 quadros), nao de uma vez
+        def fade(t):
+            if t < 2.0:
+                return 120
+            if t < 2.2:
+                return 120 - (t - 2.0) / 0.2 * 70
+            return 50 if t < 12 else 120
+        self.assertEqual(len(simulate([fade], 15)), 1)
+
+    def test_last_drop_so_guarda_escurecimento_longo(self):
+        d = CastDetector()
+        for k in range(300):
+            t = k / FPS
+            d.update(gcd(2.0)(t) if t < 5 else cooldown(6.0, 4)(t), t)
+        self.assertAlmostEqual(d.last_drop, 6.0, delta=0.05)
+
+
+class RenewalTest(unittest.TestCase):
+    def test_bug_reusou_perto_do_fim_e_nao_percebeu(self):
+        # buff de 600 s; usado de novo aos 590 s (icone escureceu nesse instante)
+        self.assertIsNone(renewal_time(0, 600, 601.0, last_drop=590.0))
+        self.assertEqual(renewal_time(0, 600, 603.0, last_drop=590.0), 590.0)
+
+    def test_sem_escurecimento_conta_do_fim_previsto(self):
+        self.assertEqual(renewal_time(0, 600, 603.0), 600.0)
+        self.assertEqual(renewal_time(0, 600, 603.0, last_drop=0.5), 600.0)
+
+    def test_sem_duracao_nao_faz_nada(self):
+        self.assertIsNone(renewal_time(0, 0, 5000.0))
 
 
 class BuffTrackerFlickerTest(unittest.TestCase):
