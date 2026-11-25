@@ -128,9 +128,42 @@ class TrackGameTest(unittest.TestCase):
 
 
 class GameWindowTest(unittest.TestCase):
+    def setUp(self):
+        # o jogo pode estar aberto neste computador: usa um titulo que nao existe
+        self._orig = sistema.DEFAULT_GAME_TITLE
+        sistema.DEFAULT_GAME_TITLE = "nao_existe_titulo_123"
+
+    def tearDown(self):
+        sistema.DEFAULT_GAME_TITLE = self._orig
+
     def test_janela_inexistente(self):
         self.assertIsNone(sistema.find_game_window("nao_existe_123.exe"))
         self.assertIsNone(sistema.client_rect(None))
+
+
+class ExeRenomeadoTest(unittest.TestCase):
+    """O jogo continua reconhecido se o executavel for renomeado."""
+
+    def setUp(self):
+        self._orig = (sistema.window_info, sistema.window_title)
+        self.win = {}
+        sistema.window_info = lambda h: self.win[h][:2]
+        sistema.window_title = lambda h: self.win[h][2]
+
+    def tearDown(self):
+        sistema.window_info, sistema.window_title = self._orig
+
+    def test_reconhece_pelo_titulo_com_outro_exe(self):
+        self.win[1] = (10, "client.exe", "BloodStone - The Ancient Curse [v1.49]")
+        self.assertTrue(sistema.is_game_window(1, "client_02.exe"))
+
+    def test_mesmo_exe(self):
+        self.win[1] = (10, "client_02.exe", "Inventory")
+        self.assertTrue(sistema.is_game_window(1, "client_02.exe"))
+
+    def test_outra_janela_nao_e_o_jogo(self):
+        self.win[1] = (11, "chrome.exe", "Bloodpedia - Wiki")
+        self.assertFalse(sistema.is_game_window(1, "client_02.exe"))
 
 
 if __name__ == "__main__":

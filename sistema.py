@@ -73,19 +73,28 @@ class SingleInstance:
 # --------------------------------------------------------------------------
 # Janela do jogo
 # --------------------------------------------------------------------------
-def find_game_window(process="", title=""):
-    """hwnd da maior janela visivel do jogo (pelo executavel ou trecho do titulo),
-    ou None. Sem nada configurado, procura 'BloodStone' no titulo."""
+def is_game_window(hwnd, process="", title=""):
+    """A janela e do jogo? Pelo executavel configurado (com o trecho de titulo, se
+    houver) ou, se o executavel nao bater, pelo titulo: o configurado ou
+    'BloodStone'. Assim o jogo continua reconhecido se o .exe for renomeado."""
     process = (process or "").strip().lower()
-    title = (title or "").strip().lower() or (DEFAULT_GAME_TITLE if not process else "")
+    title = (title or "").strip().lower()
+    name = window_title(hwnd).lower()
+    if process and window_info(hwnd)[1].lower() == process and (not title or title in name):
+        return True
+    if title and title in name:
+        return True
+    return DEFAULT_GAME_TITLE in name
+
+
+def find_game_window(process="", title=""):
+    """hwnd da maior janela visivel do jogo (veja is_game_window), ou None."""
     found = []
 
     def cb(hwnd, _l):
         if not user32.IsWindowVisible(hwnd) or user32.IsIconic(hwnd):
             return True
-        if process and window_info(hwnd)[1].lower() != process:
-            return True
-        if title and title not in window_title(hwnd).lower():
+        if not is_game_window(hwnd, process, title):
             return True
         r = client_rect(hwnd)
         if r and r[2] > 200 and r[3] > 200:

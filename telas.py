@@ -25,7 +25,7 @@ import sistema
 import tema
 import wiki
 
-VERSION = "0.8.2"
+VERSION = "0.8.3"
 REPO_URL = "https://github.com/famartins/BarraDeSkills"
 ICON_PATH = os.path.join(config.RES_DIR, "dados", "icone.ico")
 

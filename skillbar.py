@@ -100,7 +100,7 @@ try:
                           find_template, renewal_time)
     from overlay import (BROWSERS, Bar, BuffWindow, Calibrator, enable_dpi_awareness,
                          grab_image, key_down, list_windows, user32, window_info,
-                         window_title, VK_CONTROL, VK_MENU, VK_F10, VK_F11, VK_F12)
+                         VK_CONTROL, VK_MENU, VK_F10, VK_F11, VK_F12)
 except ImportError as exc:
     log_error("Faltam bibliotecas: %r" % exc)
     print("Faltam bibliotecas:", exc)
@@ -158,6 +158,7 @@ class SkillBar:
         self.requests = queue.Queue() # pedidos do icone da bandeja (outra thread)
         self.tray = None
         self.game_hwnd = None
+        self.game_pid = None      # processo do jogo (janela principal e janelinhas)
 
         # janela raiz escondida: as barras e as telas sao janelas filhas dela
         self.root = tk.Tk()
@@ -298,6 +299,10 @@ class SkillBar:
             self.game_hwnd = sistema.find_game_window(self.cfg.get("game_process"),
                                                       self.cfg.get("game_title"))
             rect = sistema.client_rect(self.game_hwnd) if self.game_hwnd else None
+            if self.game_hwnd:
+                self.remember_game(self.game_hwnd)
+            else:
+                self.game_pid = None      # jogo fechado
         if rect is None:
             return
         if self.waiting:
@@ -656,11 +661,24 @@ class SkillBar:
         pid, exe = window_info(hwnd)
         if pid == os.getpid():
             return True  # janelas do proprio programa (configuracoes etc.)
-        if proc and exe.lower() != proc:
-            return False
-        if title and title not in window_title(hwnd).lower():
-            return False
-        return True
+        if self.game_pid and pid == self.game_pid:
+            return True  # janelinhas do jogo (inventario etc.), mesmo processo
+        if sistema.is_game_window(hwnd, proc, title):
+            self.remember_game(hwnd)
+            return True
+        return False
+
+    def remember_game(self, hwnd):
+        """Guarda o processo do jogo. Se o executavel mudou de nome (o jogo foi
+        reconhecido pelo titulo), atualiza a configuracao."""
+        pid, exe = window_info(hwnd)
+        self.game_pid = pid or None
+        proc = str(self.cfg.get("game_process", "")).strip()
+        if exe and proc and exe.lower() != proc.lower():
+            self.cfg["game_process"] = exe
+            save_config(self.cfg)
+            log_error("O jogo agora roda como %s (antes %s): configuracao atualizada"
+                      % (exe, proc))
 
     def update_visibility(self):
         if not self.paused:
