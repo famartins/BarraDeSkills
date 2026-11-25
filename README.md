@@ -157,11 +157,17 @@ print da tela e o `diagnostico.txt`.
 - **Sem eco na captura:** `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)` impede que
   as próprias barras apareçam nas capturas, mesmo sobrepostas às skills originais.
 - **Telas:** [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) (`telas.py`),
-  com a identidade visual em `tema.py`: paleta verde-escura com acentos neon (fundo
-  `#002E34`, superfície `#004443`, secundária `#00755C`, acento `#00C16C`, destaque
-  `#90FF17`), texto escuro sobre o acento, raios de 10–14 px e a fonte
+  com a identidade visual em `tema.py`: carvão quente com acento em ouro e texto em tom
+  de pergaminho (fundo `#15120F`, superfície `#1F1A16`, borda `#3A3129`, texto `#EDE3D0`
+  e `#A89A84`, acento `#D4A03C`), Barra 1 em vermelho ferrugem (`#C8452F`) e Barra 2 em
+  azul (`#3A7BD5`), texto escuro sobre o ouro, raios de 10–14 px e a fonte
   [Inter](https://rsms.me/inter/) (licença SIL OFL, em `dados/fontes/`). As barras e
   buffs sobre o jogo usam as mesmas cores; a moldura do buff acabando continua vermelha.
+- **Personagem de cada vocação** (tela de escolha): montado como no
+  [provador de roupas da Bloodpedia](https://www.bloodpedia.com.br/outfits/). A folha de
+  sprites traz, em blocos de 128×128, a imagem base e uma máscara de cores; `wiki.py`
+  pinta cada cor da máscara com a cor da roupa e guarda o resultado em
+  `cache/personagens/`. A roupa de cada vocação fica em `vocacoes.json` (`personagem`).
 - **Personagens** (`config.py`): as opções gerais valem para todos. Vocação, barras e
   buffs pertencem a cada personagem. O personagem ativo fica no nível de cima da
   configuração, e uma cópia dele é guardada em `profiles` a cada gravação. Configurações

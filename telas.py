@@ -24,7 +24,7 @@ import sistema
 import tema
 import wiki
 
-VERSION = "0.6"
+VERSION = "0.7"
 REPO_URL = "https://github.com/famartins/BarraDeSkills"
 ICON_PATH = os.path.join(config.RES_DIR, "dados", "icone.ico")
 
@@ -262,21 +262,25 @@ def load_icon(voc_slug, magia):
         return None
 
 
-ART_INK = (184, 245, 216)     # traco da arte (verde-menta claro)
-
-
-def load_art(voc):
-    """Arte da vocacao (desenho a lapis) em tons de verde: o traco vira verde-menta
-    claro com fundo transparente, como giz sobre o card verde-escuro."""
+def load_art(voc, box):
+    """Personagem da vocacao (pixel art do jogo) ampliado sem borrar para caber em
+    `box`, com uma sombra suave embaixo dos pes. None se ainda nao foi baixado."""
     try:
         art = Image.open(wiki.art_path(voc)).convert("RGBA")
     except OSError:
         return None
-    paper = Image.new("RGBA", art.size, (255, 255, 255, 255))
-    paper.alpha_composite(art)
-    ink = paper.convert("L").point(lambda v: round(255 * (1 - v / 255) ** 0.8))
-    out = Image.new("RGBA", art.size, ART_INK + (255,))
-    out.putalpha(ink)
+    # mesma escala para todas as vocacoes (proporcoes iguais as do jogo): o maior
+    # personagem (Xama, com a lanca) tem ~117x100 px. Amplia 2x sem borrar e depois reduz suave.
+    k = min(box[0] / 118, (box[1] - 10) / 100)
+    w, h = max(1, round(art.width * k)), max(1, round(art.height * k))
+    big = art.resize((art.width * 2, art.height * 2), Image.NEAREST)
+    art = big.resize((w, h), Image.LANCZOS)
+    from PIL import ImageDraw, ImageFilter
+    out = Image.new("RGBA", (w, h + 10), (0, 0, 0, 0))
+    shadow = Image.new("RGBA", out.size, (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).ellipse((w * 0.18, h - 6, w * 0.82, h + 8), fill=(0, 0, 0, 150))
+    out.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(4)))
+    out.alpha_composite(art, (0, 0))
     return out
 
 
@@ -453,10 +457,10 @@ class Wizard(Window):
                             border_width=2, border_color=BORDER)
         card.pack_propagate(False)
         voc = wiki.find_vocacao(self.vocacoes, data.get("vocacao") or "")
-        art = load_art(voc) if voc else None
+        art = load_art(voc, (150, 120)) if voc else None
         pic = ctk.CTkLabel(card, text="" if art else "?", font=F(40, "bold"),
                            text_color=DIM, height=120,
-                           image=cimg(art, fit(art, (150, 120))) if art else None)
+                           image=cimg(art, art.size) if art else None)
         pic.pack(pady=(14, 6))
         active = name == self.app.cfg["profile"]
         ctk.CTkLabel(card, text=name, font=F(15, "bold"), text_color=TEXT,
@@ -522,13 +526,13 @@ class Wizard(Window):
         grid.pack(expand=True)
         self.voc_pics = {}
         for i, voc in enumerate(self.vocacoes):
-            card = ctk.CTkFrame(grid, width=178, height=330, fg_color=CARD, corner_radius=14,
+            card = ctk.CTkFrame(grid, width=180, height=340, fg_color=CARD, corner_radius=14,
                                 border_width=2, border_color=BORDER)
-            card.grid(row=0, column=i, padx=7, pady=10)
+            card.grid(row=0, column=i, padx=6, pady=10)
             card.pack_propagate(False)
-            art = load_art(voc)
-            pic = ctk.CTkLabel(card, text="", height=240,
-                               image=cimg(art, fit(art, (160, 240))) if art else None)
+            art = load_art(voc, (172, 236))
+            pic = ctk.CTkLabel(card, text="" if art else "…", height=250, font=F(28),
+                               text_color=DIM, image=cimg(art, art.size) if art else None)
             pic.pack(pady=(14, 8))
             ctk.CTkLabel(card, text=voc["nome"], font=F(18, "bold"), text_color=TEXT).pack()
             ctk.CTkLabel(card, text="%d magias" % len(voc["magias"]), font=F(12),
@@ -545,9 +549,9 @@ class Wizard(Window):
 
     def _art_ready(self, voc):
         pic = self.voc_pics.get(voc["slug"]) if hasattr(self, "voc_pics") else None
-        art = load_art(voc)
+        art = load_art(voc, (172, 236))
         if art is not None and pic is not None and pic.winfo_exists():
-            pic.configure(image=cimg(art, fit(art, (160, 240))))
+            pic.configure(image=cimg(art, art.size), text="")
 
     def skip(self):
         self.app.skip_wizard()
@@ -1102,9 +1106,9 @@ class Settings(Window):
         voc = wiki.find_vocacao(wiki.load_vocacoes(), cfg.get("vocacao") or "")
         card = ctk.CTkFrame(tab, fg_color=BG, corner_radius=10)
         card.pack(fill="x", pady=14)
-        art = load_art(voc) if voc else None
+        art = load_art(voc, (80, 90)) if voc else None
         if art:
-            ctk.CTkLabel(card, text="", image=cimg(art, fit(art, (70, 90)))
+            ctk.CTkLabel(card, text="", image=cimg(art, art.size)
                          ).pack(side="left", padx=12, pady=10)
         bars = [b for b in cfg["bars"] if b["regions"]]
         info = ctk.CTkFrame(card, fg_color="transparent")

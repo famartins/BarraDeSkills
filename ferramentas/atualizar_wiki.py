@@ -6,9 +6,10 @@ Gera dados/vocacoes.json a partir da tabela "Magias" da Bloodpedia.
 So o mantenedor precisa rodar isto, quando a wiki mudar:
     python ferramentas/atualizar_wiki.py
 
-Guarda apenas nome, tipo, nivel minimo, mana e link do icone de cada magia, e o link
-da arte de cada vocacao (pagina inicial). As imagens NAO sao guardadas no
-repositorio: o programa baixa cada uma na primeira vez (veja wiki.py).
+Guarda apenas nome, tipo, nivel minimo, mana e link do icone de cada magia, e de
+cada vocacao a roupa do personagem mostrado na escolha de vocacao (provador de
+roupas da Bloodpedia: link da folha de sprites e as 6 cores). As imagens NAO sao
+guardadas no repositorio: o programa baixa cada uma na primeira vez (wiki.py).
 A duracao dos buffs nao vem da wiki: o tempo citado la nao e a duracao real.
 """
 
@@ -21,6 +22,16 @@ import urllib.parse
 import urllib.request
 
 SITE = "https://bloodpedia.vercel.app"
+OUTFITS = "https://www.bloodpedia.com.br/outfits/"
+# roupa de cada vocacao na tela de escolha: (genero, nome da skin), parado, de frente
+PERSONAGENS = {
+    "cavaleiro": ("Homem", "Founders Gold"),
+    "barbaro": ("Homem", "Cristal"),
+    "arqueiro": ("Homem", "Founders Gold"),
+    "xama": ("Mulher", "Founders Gold"),
+    "mago": ("Mulher", "Founders Gold"),
+}
+CANAIS = ("Red", "Green", "Blue", "Yellow", "Magenta", "Cyan")
 VOCACOES = [
     ("cavaleiro", "Cavaleiro"),
     ("barbaro", "Bárbaro"),
@@ -80,28 +91,40 @@ def ler_magias(pagina):
     return magias
 
 
-def artes(home):
-    """{nome_da_vocacao: url} das artes (ex.: .../BárbaroArtworkM.png) da pagina inicial."""
+def personagens(pagina):
+    """{nome_da_vocacao: {skin, genero, sprite_url, cores}} do provador de roupas.
+    Cores como o provador usa: as da skin (ou as padrao) com o magenta 18."""
+    m = re.search(r'<script[^>]*id="outfit-data"[^>]*>(.*?)</script>', pagina, re.S)
+    dados = json.loads(m.group(1))
+    pal = dados["palette"]
     out = {}
-    for src in re.findall(r'<img[^>]+src="([^"]+ArtworkM\.png)"', home):
-        nome = urllib.parse.unquote(src.rsplit("/", 1)[-1])[:-len("ArtworkM.png")]
-        out.setdefault(nome, urllib.parse.urljoin(SITE, src))
+    for slug, nome in VOCACOES:
+        genero, skin = PERSONAGENS[slug]
+        achou = [s for s in dados["skins"] if s["vocation"] == nome and s["name"] == skin
+                 and s["gender"] in (genero, "Ambos")]
+        if not achou or "Back" not in achou[0]["sprites"].get("Parado", {}):
+            print("  aviso: sem a roupa %s (%s) para %s" % (skin, genero, nome))
+            continue
+        s = achou[0]
+        cores = dict(s.get("colors") or dados["defaultColors"])
+        cores["Magenta"] = 18
+        out[nome] = {"skin": skin, "genero": genero,
+                     "sprite_url": OUTFITS + s["sprites"]["Parado"]["Back"],
+                     "cores": ["#" + pal[cores[c]] for c in CANAIS]}
     return out
 
 
 def main():
     dados = {"fonte": SITE + "/wiki/", "vocacoes": []}
-    arte = artes(baixar(SITE + "/"))
+    roupa = personagens(baixar(OUTFITS))
     for slug, nome in VOCACOES:
         magias = ler_magias(baixar("%s/wiki/%s/" % (SITE, slug)))
         print("%-10s %d magias" % (nome, len(magias)))
         if not magias:
             print("  ERRO: nenhuma magia lida; a wiki mudou de formato?")
             sys.exit(1)
-        if nome not in arte:
-            print("  aviso: sem arte para %s" % nome)
-        dados["vocacoes"].append({"slug": slug, "nome": nome, "arte_url": arte.get(nome, ""),
-                                  "magias": magias})
+        dados["vocacoes"].append({"slug": slug, "nome": nome,
+                                  "personagem": roupa.get(nome, {}), "magias": magias})
     os.makedirs(os.path.dirname(SAIDA), exist_ok=True)
     with open(SAIDA, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False, indent=1)

@@ -4,7 +4,19 @@
   {
    "slug": "cavaleiro",
    "nome": "Cavaleiro",
-   "arte_url": "https://bloodpedia.vercel.app/w/images/5/5d/CavaleiroArtworkM.png",
+   "personagem": {
+    "skin": "Founders Gold",
+    "genero": "Homem",
+    "sprite_url": "https://www.bloodpedia.com.br/outfits/knight-dourado-man-18610-skin-knight-man-founders-gold-idle-back.png",
+    "cores": [
+     "#CE4040",
+     "#41CE57",
+     "#405ACE",
+     "#CDCE40",
+     "#F0F0C5",
+     "#40C1CE"
+    ]
+   },
    "magias": [
     {
      "nome": "Primeiros Socorros",
@@ -227,7 +239,19 @@
   {
    "slug": "barbaro",
    "nome": "Bárbaro",
-   "arte_url": "https://bloodpedia.vercel.app/w/images/3/3c/B%C3%A1rbaroArtworkM.png",
+   "personagem": {
+    "skin": "Cristal",
+    "genero": "Homem",
+    "sprite_url": "https://www.bloodpedia.com.br/outfits/barbarian-founders-gold-man-18681-skin-barbarian-man-cristal-idle-back.png",
+    "cores": [
+     "#CE4040",
+     "#41CE57",
+     "#405ACE",
+     "#CDCE40",
+     "#F0F0C5",
+     "#40C1CE"
+    ]
+   },
    "magias": [
     {
      "nome": "Primeiros Socorros",
@@ -450,7 +474,19 @@
   {
    "slug": "arqueiro",
    "nome": "Arqueiro",
-   "arte_url": "https://bloodpedia.vercel.app/w/images/8/8d/ArqueiroArtworkM.png",
+   "personagem": {
+    "skin": "Founders Gold",
+    "genero": "Homem",
+    "sprite_url": "https://www.bloodpedia.com.br/outfits/archer-founders-gold-man-18679-skin-archer-man-founders-gold-idle-back.png",
+    "cores": [
+     "#CE9F40",
+     "#CDCE40",
+     "#FFFFFF",
+     "#CDCE40",
+     "#F0F0C5",
+     "#40C1CE"
+    ]
+   },
    "magias": [
     {
      "nome": "Primeiros Socorros",
@@ -657,7 +693,19 @@
   {
    "slug": "xama",
    "nome": "Xamã",
-   "arte_url": "https://bloodpedia.vercel.app/w/images/b/b5/Xam%C3%A3ArtworkM.png",
+   "personagem": {
+    "skin": "Founders Gold",
+    "genero": "Mulher",
+    "sprite_url": "https://www.bloodpedia.com.br/outfits/druid-dourado-woman-18690-skin-druid-woman-founders-gold-idle-back.png",
+    "cores": [
+     "#CE4040",
+     "#41CE57",
+     "#405ACE",
+     "#CDCE40",
+     "#F0F0C5",
+     "#40C1CE"
+    ]
+   },
    "magias": [
     {
      "nome": "Primeiros Socorros",
@@ -944,7 +992,19 @@
   {
    "slug": "mago",
    "nome": "Mago",
-   "arte_url": "https://bloodpedia.vercel.app/w/images/2/2a/MagoArtworkM.png",
+   "personagem": {
+    "skin": "Founders Gold",
+    "genero": "Mulher",
+    "sprite_url": "https://www.bloodpedia.com.br/outfits/mage-dourado-woman-18685-skin-mage-woman-founders-gold-idle-back.png",
+    "cores": [
+     "#CE4040",
+     "#41CE57",
+     "#405ACE",
+     "#CDCE40",
+     "#F0F0C5",
+     "#40C1CE"
+    ]
+   },
    "magias": [
     {
      "nome": "Primeiros Socorros",
