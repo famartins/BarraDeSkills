@@ -13,6 +13,7 @@ overlay.py, porque precisam de estilos especiais do Windows.
 
 import os
 import webbrowser
+import tkinter as tk
 from tkinter import messagebox
 
 import customtkinter as ctk
@@ -24,7 +25,7 @@ import sistema
 import tema
 import wiki
 
-VERSION = "0.7"
+VERSION = "0.7.1"
 REPO_URL = "https://github.com/famartins/BarraDeSkills"
 ICON_PATH = os.path.join(config.RES_DIR, "dados", "icone.ico")
 
@@ -202,31 +203,84 @@ class Tabs(ctk.CTkFrame):
 
 
 class Tooltip:
-    """Caixinha que aparece ao passar o mouse (ex.: dados de uma magia)."""
+    """Caixinha que aparece ao passar o mouse (ex.: dados de uma magia).
+
+    Uma janela Tk simples, criada uma vez e reaproveitada: so muda o texto e a
+    posicao. (Uma CTkToplevel por hover deixava janelas para tras e, com a escala
+    do Windows acima de 100%, a posicao saia multiplicada e longe do card.)
+    O esconder espera um instante: ao passar de um filho do card para outro o
+    Tk manda "saiu" e "entrou" seguidos, e a caixa nao deve piscar."""
 
     def __init__(self, root):
         self.root = root
         self.win = None
+        self.owner = None
+        self.pending = None
 
-    def show(self, widget, title, lines):
-        self.hide()
-        win = self.win = ctk.CTkToplevel(self.root)
+    def _build(self):
+        win = self.win = tk.Toplevel(self.root)
+        win.withdraw()
         win.overrideredirect(True)
         win.attributes("-topmost", True)
-        win.configure(fg_color=SECONDARY)
-        box = ctk.CTkFrame(win, fg_color=BG, corner_radius=0)
+        win.configure(bg=SECONDARY)
+        box = tk.Frame(win, bg=BG, padx=12, pady=8)
         box.pack(padx=1, pady=1)
-        ctk.CTkLabel(box, text=title, font=F(13, "bold"), text_color=HIGHLIGHT,
-                     anchor="w").pack(fill="x", padx=12, pady=(8, 2))
-        for ln in lines:
-            ctk.CTkLabel(box, text=ln, font=F(tema.CAPTION), text_color=TEXT,
-                         anchor="w", justify="left").pack(fill="x", padx=12)
-        ctk.CTkFrame(box, height=8, fg_color="transparent").pack()
+        self.title = tk.Label(box, bg=BG, fg=HIGHLIGHT, anchor="w", justify="left",
+                              font=(FAMILY, 11, "bold"))
+        self.title.pack(fill="x", pady=(0, 4))
+        self.body = tk.Label(box, bg=BG, fg=TEXT, anchor="w", justify="left",
+                             font=(FAMILY, 9))
+        self.body.pack(fill="x")
+
+    def show(self, widget, title, lines):
+        self._cancel()
+        if self.win is None or not self.win.winfo_exists():
+            self._build()
+        self.owner = widget
+        self.title.configure(text=title)
+        self.body.configure(text="\n".join(lines))
+        self.win.update_idletasks()
+        w, h = self.win.winfo_reqwidth(), self.win.winfo_reqheight()
         x = widget.winfo_rootx() + widget.winfo_width() + 6
         y = widget.winfo_rooty()
-        win.geometry("+%d+%d" % (x, y))
+        # sem espaco a direita: aparece a esquerda do card
+        if x + w > widget.winfo_screenwidth():
+            x = widget.winfo_rootx() - w - 6
+        y = min(y, widget.winfo_screenheight() - h - 4)
+        self.win.geometry("+%d+%d" % (x, y))
+        self.win.deiconify()
+        self.win.lift()
+
+    def show_again(self):
+        """O mouse continua no mesmo card: cancela o esconder pendente."""
+        self._cancel()
+
+    def hide_soon(self, widget=None):
+        """Esconde daqui a pouco, se o mouse nao entrar de novo no mesmo card."""
+        if widget is not None and widget is not self.owner:
+            return
+        self._cancel()
+        self.pending = self.root.after(80, self.hide)
+
+    def _cancel(self):
+        if self.pending is not None:
+            try:
+                self.root.after_cancel(self.pending)
+            except Exception:
+                pass
+            self.pending = None
 
     def hide(self):
+        self._cancel()
+        self.owner = None
+        if self.win is not None:
+            try:
+                self.win.withdraw()
+            except Exception:
+                pass
+
+    def destroy(self):
+        self.hide()
         if self.win is not None:
             try:
                 self.win.destroy()
@@ -389,10 +443,15 @@ class Wizard(Window):
         self.cur_bar = 0
 
     def close(self):
+        if getattr(self, "tip", None) is not None:
+            self.tip.destroy()
         self.destroy()
         self.app.wizard_closed(self.finished)
 
     def set_page(self, frame, name=""):
+        if getattr(self, "tip", None) is not None:
+            self.tip.destroy()
+            self.tip = None
         if self.page is not None:
             self.page.destroy()
         self.page = frame
@@ -656,11 +715,14 @@ class Wizard(Window):
         card.icon, card.badge = icon, badge
         bind_tree(card, "<Button-1>", lambda _e, s=m["slug"]: self.toggle(s))
         bind_tree(card, "<Enter>", lambda _e, c=card, m=m: self._card_enter(c, m))
-        bind_tree(card, "<Leave>", lambda _e: self.tip.hide())
+        bind_tree(card, "<Leave>", lambda _e, c=card: self.tip.hide_soon(c))
         return card
 
     def _card_enter(self, card, m):
         card.configure(cursor="hand2")
+        if self.tip.owner is card:      # andou entre partes do mesmo card
+            self.tip.show_again()
+            return
         lines = ["%s  ·  nível mínimo %d" % (m["tipo"], m["nivel"]) if m.get("nivel")
                  else m["tipo"]]
         if m.get("mana"):
