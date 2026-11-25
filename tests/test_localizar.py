@@ -80,11 +80,13 @@ class SlotTrackerTest(unittest.TestCase):
     def crops(self, img, regions):
         return [img.crop((x, y, x + w, y + h)) for x, y, w, h in regions]
 
-    def run_check(self, img, regions, tracker=None):
+    def run_check(self, img, regions, tracker=None, seconds=1.0, cooldown=()):
+        """Verifica como o programa: a cada 0,3 s, por `seconds` segundos."""
         t = tracker or localizar.SlotTracker(self.icons)
         moved = {}
-        for _ in range(3):       # algumas verificacoes, como no programa
-            m = t.check(self.crops(img, regions), regions, lambda: (img, 0, 0))
+        for k in range(int(seconds / 0.3) + 1):
+            m = t.check(self.crops(img, regions), regions, lambda: (img, 0, 0),
+                        cooldown=cooldown, now=k * 0.3)
             for i, r in m.items():
                 regions[i] = r
             moved.update(m)
@@ -104,14 +106,47 @@ class SlotTrackerTest(unittest.TestCase):
         self.assertEqual(sorted(moved), [0, 1])
         self.assertEqual(t.state, ["ok"] * 5)
 
-    def test_skill_fora_do_set_fica_apagada(self):
+    def test_troca_de_set_skill_que_nao_esta_nele_fica_apagada(self):
+        # novo Set: a Ira foi para outro lugar e o Vampirismo nao esta nele
         img = self.side.copy()
-        x, y = ESPERADO["vampirismo"]
-        img.paste(self.side.crop((18, 959, 62, 1003)), (x, y))   # outra coisa no lugar
-        t, moved = self.run_check(img, [list(r) for r in self.regions])
-        self.assertEqual(t.state[1], "missing")
+        xi, yi = ESPERADO["ira-frenetica"]
+        xv, yv = ESPERADO["vampirismo"]
+        ira = self.side.crop((xi, yi, xi + 44, yi + 44))
+        outra = self.side.crop((18, 959, 62, 1003))
+        img.paste(outra, (xi, yi))
+        img.paste(outra, (xv, yv))
+        img.paste(ira, (18, 1109))
+        regs = [list(r) for r in self.regions]
+        t, moved = self.run_check(img, regs)
+        self.assertEqual(list(moved), [0])                 # Ira seguida
+        self.assertEqual(regs[0][:2], [18, 1109])
+        self.assertEqual(t.state[1], "missing")            # Vampirismo apagado
         self.assertEqual([t.state[i] for i in (0, 2, 3, 4)], ["ok"] * 4)
         self.assertFalse(t.all_missing())
+
+    def test_bug_skill_usada_sem_cor_nao_fica_apagada(self):
+        # recarga: o jogo tira a cor, escurece e escreve a contagem. Sozinha, sem
+        # nenhuma skill mudar de lugar, continua sendo copiada da tela.
+        img = self.side.copy()
+        font = self.Font.truetype("arial.ttf", 10)
+        x, y = ESPERADO["ira-frenetica"]
+        c = img.crop((x, y, x + 44, y + 44))
+        c = self.Enh.Brightness(self.Enh.Color(c).enhance(0)).enhance(0.45)
+        self.Draw.Draw(c).text((10, 16), "19.9", fill="white", font=font)
+        img.paste(c, (x, y))
+        self.assertGreater(localizar.match_score(c, self.icons[0]), localizar.MAYBE_SCORE)
+        t, moved = self.run_check(img, [list(r) for r in self.regions], seconds=10)
+        self.assertEqual(moved, {})
+        self.assertEqual(t.state, ["ok"] * 5)
+
+    def test_varias_em_recarga_confirmada_nao_apagam(self):
+        img = self.side.copy()
+        for x, y in list(ESPERADO.values())[:3]:
+            c = img.crop((x, y, x + 44, y + 44))
+            img.paste(self.Enh.Brightness(self.Enh.Color(c).enhance(0)).enhance(0.45), (x, y))
+        t, _ = self.run_check(img, [list(r) for r in self.regions], seconds=10,
+                              cooldown=(0, 1, 2))
+        self.assertEqual(t.state, ["ok"] * 5)
 
     def test_recarga_com_contagem_nao_conta_como_troca(self):
         img = self.side.copy()
@@ -124,9 +159,12 @@ class SlotTrackerTest(unittest.TestCase):
         self.assertEqual(moved, {})
         self.assertEqual(t.state, ["ok"] * 5)
 
-    def test_outro_personagem_tudo_sumido(self):
+    def test_outro_personagem_tudo_sumido_depois_de_firmar(self):
         outro = Image.new("RGB", self.side.size, (40, 32, 30))
-        t, _ = self.run_check(outro, [list(r) for r in self.regions])
+        t, _ = self.run_check(outro, [list(r) for r in self.regions], seconds=1.5)
+        self.assertFalse(t.all_missing())     # pode ser so a recarga global
+        t, _ = self.run_check(outro, [list(r) for r in self.regions], tracker=t,
+                              seconds=3.0)
         self.assertTrue(t.all_missing())
 
     def test_conta_skills_de_um_preset_na_barra_lateral(self):

@@ -105,6 +105,30 @@ class CastDetectorTest(unittest.TestCase):
 
 
 class CastDetectorExtraTest(unittest.TestCase):
+    def test_em_recarga_so_depois_de_confirmar_e_ate_clarear(self):
+        dets = [CastDetector(), CastDetector()]
+        skills = [cooldown(1.0, 5), ready]
+        estados = {}
+        for k in range(int(8 * FPS)):
+            t = k / FPS
+            for f, d in zip(skills, dets):
+                d.update(f(t), t)
+            confirm_casts(dets, t)
+            estados[round(t, 1)] = dets[0].in_cooldown()
+        self.assertFalse(estados[1.5])      # escureceu, ainda nao confirmado
+        self.assertTrue(estados[3.0])       # uso confirmado, ainda escuro
+        self.assertFalse(estados[7.0])      # recarga acabou
+        self.assertFalse(dets[1].in_cooldown())
+
+    def test_recarga_global_nao_marca_recarga(self):
+        dets = [CastDetector() for _ in range(3)]
+        for k in range(int(6 * FPS)):
+            t = k / FPS
+            for d in dets:
+                d.update(gcd(1.0, length=2.0)(t), t)
+            confirm_casts(dets, t)
+            self.assertFalse(any(d.in_cooldown() for d in dets))
+
     def test_escurecimento_em_alguns_quadros_tambem_conta(self):
         # o icone escurece aos poucos em 0,2 s (6 quadros), nao de uma vez
         def fade(t):

@@ -547,7 +547,8 @@ class SkillBar:
         if len(regions) != len(self.slots.icons) or len(crops) != len(regions):
             return
         before = list(self.slots.state)
-        moved = self.slots.check(crops, regions, self.grab_sidebar)
+        cooldown = [i for i, d in enumerate(self.cast_detectors) if d.in_cooldown()]
+        moved = self.slots.check(crops, regions, self.grab_sidebar, cooldown=cooldown)
         if moved:
             names = config.all_magias(self.cfg)
             offsets = config.bar_offsets(self.cfg)
@@ -612,10 +613,9 @@ class SkillBar:
                              'criar um.' % self.cfg.get("profile"))
 
     def detect_casts(self, crops):
-        """Percebe quando uma skill e usada (icone escurece) e reinicia o tempo do
-        buff ligado a ela, caso ele ja esteja ativo (skill reusada antes de acabar)."""
-        if not self.buffs:
-            return
+        """Percebe quando uma skill e usada (icone escurece). Serve para reiniciar o
+        tempo do buff ligado a ela (skill reusada antes de acabar) e para a
+        verificacao de Set saber que o icone diferente e so a recarga."""
         if len(self.cast_detectors) != len(crops):
             self.cast_detectors = [CastDetector() for _ in crops]
         now = time.monotonic()

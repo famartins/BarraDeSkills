@@ -85,6 +85,11 @@ class CastDetector:
         self.drop_at = None   # instante da queda atual (enquanto escuro)
         self.last_drop = None  # inicio do ultimo escurecimento que durou >= `long` s
         self.long = 1.5
+        self.confirmed = False  # a queda atual foi confirmada como uso (confirm_casts)
+
+    def in_cooldown(self):
+        """A skill foi usada (uso confirmado) e o icone ainda esta escuro."""
+        return self.cooling and self.confirmed
 
     def update(self, brightness, now):
         """Recebe o brilho do quadro atual. Retorna True se o icone acabou de escurecer."""
@@ -97,6 +102,7 @@ class CastDetector:
                 self.last_drop = self.drop_at   # escuro por um tempo: parece uso real
             if b >= self.base * self.recover:
                 self.cooling = False
+                self.confirmed = False
                 self.pending = None   # voltou ao normal: nao era (mais) uma recarga
         elif b < self.base * self.drop and b < max(
                 [v for _, v in self.recent] or [b]) * self.drop:
@@ -137,6 +143,7 @@ def confirm_casts(detectors, now, min_dark=1.5, group_window=0.3, max_wait=8.0):
             continue
         out.append((i, d.pending))
         d.pending = None
+        d.confirmed = True
     return out
 
 

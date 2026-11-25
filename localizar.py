@@ -183,16 +183,26 @@ class SlotTracker:
 
     O jogo tem varios "Sets" de barra lateral e cada um poe as skills em lugares
     diferentes. A cada verificacao, para cada skill com icone conhecido:
-    - continua no lugar (mesmo em recarga)              -> "ok"
+    - continua no lugar                                 -> "ok"
     - mudou de lugar (achada pronta em outra posicao)   -> "ok" e nova regiao
-    - no lugar ha outra coisa e ela nao foi achada      -> "missing" (nao esta
-      neste Set; a barra mostra o icone apagado)
-    - duvida (parece ela, mas nao com certeza)          -> mantem o estado anterior
+    - nao bate mais com o icone                         -> depende do contexto
+
+    Uma skill que deixa de bater SOZINHA quase sempre esta em recarga: o jogo
+    escurece e tira a cor do icone e escreve a contagem por cima, e ai ela nao
+    bate com o icone da wiki. Por isso so vira "missing" (fora deste Set, a barra
+    mostra o icone apagado) quando ha prova de que a barra lateral mudou:
+    - outra skill mudou de lugar nesta verificacao (troca de Set), ou
+    - metade ou mais das skills nao bate por `settle` segundos seguidos (outro
+      personagem; a recarga global, que escurece todas juntas, dura menos).
+    Skills em recarga confirmada (`cooldown`, do detector de uso) nao contam para
+    a maioria e so viram "missing" quando a maioria ja sumiu.
     Skills sem icone conhecido ficam sempre "ok" (so copia a tela)."""
 
-    def __init__(self, icons):
+    def __init__(self, icons, settle=2.5):
         self.icons = list(icons)
         self.state = ["ok"] * len(self.icons)
+        self.settle = settle
+        self.majority_since = None
         self._turn = 0
 
     def known(self):
@@ -202,28 +212,32 @@ class SlotTracker:
         k = self.known()
         return bool(k) and all(self.state[i] == "missing" for i in k)
 
-    def check(self, crops, regions, sidebar=None, max_search=4):
+    def check(self, crops, regions, sidebar=None, max_search=4, cooldown=(), now=None):
         """crops/regions: recorte e [x, y, w, h] de cada skill (indice global).
         sidebar: funcao que devolve (imagem_PIL, x, y) da barra lateral, chamada
         so se precisar procurar. Procura no maximo `max_search` skills por vez
         (primeiro as que acabaram de sair do lugar; as que ja estavam sumidas vao
-        em rodizio). Retorna {indice: nova_regiao} das que mudaram de lugar."""
+        em rodizio). cooldown: indices em recarga confirmada. now: relogio em
+        segundos. Retorna {indice: nova_regiao} das que mudaram de lugar."""
+        import time
+        now = time.monotonic() if now is None else now
+        cooldown = set(cooldown)
+        known = self.known()
         moved = {}
         side = None
-        scores = {i: match_score(crops[i], self.icons[i]) for i in self.known()}
-        failing = [i for i in scores if scores[i] > GOOD_SCORE]
-        fresh = [i for i in failing if self.state[i] == "ok"]
-        old = [i for i in failing if self.state[i] != "ok"]
+        scores = {i: match_score(crops[i], self.icons[i]) for i in known}
+        bad = [i for i in known if scores[i] > GOOD_SCORE]
+        fresh = [i for i in bad if self.state[i] == "ok" and i not in cooldown]
+        old = [i for i in bad if self.state[i] != "ok"]
         if old:
             k = self._turn % len(old)
             old = old[k:] + old[:k]
         self._turn += 1
         search = set((fresh + old)[:max_search])
-        changed = False
-        doubtful = []
-        for i in self.known():
-            icon, (x, y, w, h), r = self.icons[i], regions[i], scores[i]
-            if r <= GOOD_SCORE:
+        failing, held = [], []
+        for i in known:
+            icon, (x, y, w, h) = self.icons[i], regions[i]
+            if scores[i] <= GOOD_SCORE:
                 self.state[i] = "ok"
                 continue
             if sidebar is not None and i in search:
@@ -238,21 +252,28 @@ class SlotTracker:
                             moved[i] = [nx, ny, w, h]
                             self.state[i] = "ok"
                             continue
-            if r > MAYBE_SCORE:
-                if self.state[i] != "missing":
-                    changed = True
+            if i in cooldown:
+                held.append(i)                # usada agora: e a recarga
+                continue
+            failing.append(i)
+
+        if failing and len(failing) * 2 >= len(known):
+            if self.majority_since is None:
+                self.majority_since = now
+        else:
+            self.majority_since = None
+        majority = (self.majority_since is not None
+                    and now - self.majority_since >= self.settle)
+        if moved or majority:
+            for i in failing:
                 self.state[i] = "missing"
-            else:
-                doubtful.append(i)
-        # duvida (parece a skill, mas nao com certeza): sozinha costuma ser recarga
-        # com a contagem escrita por cima, entao fica como esta. Mas se outras
-        # skills sumiram/mudaram agora, ou a maioria ja sumiu, a barra lateral
-        # mudou (troca de Set, outro personagem): conta como sumida tambem.
-        known = self.known()
-        gone = sum(1 for i in known if self.state[i] == "missing")
-        if doubtful and (changed or moved or gone * 2 >= len(known)):
-            for i in doubtful:
-                self.state[i] = "missing"
+        if majority:
+            # a barra lateral inteira mudou (outro personagem): quem parecia estar em
+            # recarga, mas tambem nao bate de jeito nenhum, sumiu junto
+            for i in held:
+                if scores[i] > MAYBE_SCORE:
+                    self.state[i] = "missing"
+        # sem prova de mudanca: quem nao bate fica como estava (recarga)
         return moved
 
 
