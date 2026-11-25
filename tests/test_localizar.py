@@ -63,5 +63,36 @@ class LocalizarTest(unittest.TestCase):
             self.assertLessEqual(abs(r["box"][1] - ey * 0.75), 3, m["slug"])
 
 
+@unittest.skipUnless(os.path.isfile(FIXTURE), "sem captura de teste em cache/teste/")
+class PersonagemCertoTest(unittest.TestCase):
+    """A barra so aparece se as skills na tela forem as do personagem escolhido."""
+
+    def setUp(self):
+        area = Image.open(FIXTURE).convert("RGB")
+        self.slugs = list(ESPERADO)
+        self.crops = [area.crop((x, y, x + 44, y + 44)) for x, y in ESPERADO.values()]
+        _m, icons = _carregar(self.slugs)
+        by = dict(zip([m["slug"] for m in _m], icons))
+        self.icons = [by[s] for s in self.slugs]
+
+    def test_skills_do_personagem_batem(self):
+        self.assertTrue(localizar.skills_match(self.crops, self.icons))
+
+    def test_bug_outro_personagem_logado_nao_bate(self):
+        # mesmas posicoes, mas com icones de outras skills (como o Arqueiro logado
+        # usando o preset do Barbaro)
+        trocados = self.icons[1:] + self.icons[:1]
+        self.assertFalse(localizar.skills_match(self.crops, trocados))
+
+    def test_uma_skill_em_recarga_ainda_conta_como_certo(self):
+        from PIL import ImageEnhance
+        escuras = [ImageEnhance.Brightness(c).enhance(0.35) for c in self.crops]
+        escuras[2] = self.crops[2]
+        self.assertTrue(localizar.skills_match(escuras, self.icons))
+
+    def test_sem_icones_conhecidos_nao_decide(self):
+        self.assertIsNone(localizar.skills_match(self.crops, [None] * 5))
+
+
 if __name__ == "__main__":
     unittest.main()

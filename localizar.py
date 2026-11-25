@@ -120,6 +120,32 @@ def locate(area_img, icons, scale=None):
     return scale, results
 
 
+def slot_score(crop, icon, pad=3):
+    """Diferenca entre o recorte de UMA skill na tela e o icone esperado da wiki
+    (so o miolo, com folga de `pad` px para pequenos desalinhamentos)."""
+    crop = crop.convert("RGB")
+    w, h = crop.size
+    if w < 8 or h < 8:
+        return 255.0
+    tpl = icon.convert("RGB").resize((w, h), Image.BILINEAR)
+    x0, y0, x1, y1 = _core_box((w, h))
+    core = np.asarray(tpl.crop((x0, y0, x1, y1)), dtype=np.int16)
+    area = np.asarray(crop.crop((max(0, x0 - pad), max(0, y0 - pad),
+                                 min(w, x1 + pad), min(h, y1 + pad))), dtype=np.int16)
+    m = best_match(area, core, step=2, stride=1)
+    return m[0] if m else 255.0
+
+
+def skills_match(crops, icons):
+    """As skills na tela sao as do personagem? True se pelo menos uma bate com o
+    icone esperado (as outras podem estar em recarga), False se nenhuma bate,
+    None se nao da para saber (menos de 2 skills com icone conhecido)."""
+    pairs = [(c, i) for c, i in zip(crops, icons) if i is not None]
+    if len(pairs) < 2:
+        return None
+    return any(slot_score(c, i) <= MAYBE_SCORE for c, i in pairs)
+
+
 def _mark_conflicts(results):
     """Dois icones no mesmo lugar: o de maior diferenca vira 'nao_achou'."""
     for i, a in enumerate(results):

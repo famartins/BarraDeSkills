@@ -92,6 +92,7 @@ try:
     import mss
     import numpy as np
     from PIL import Image
+    import localizar
     import sistema
     import telas
     import wiki
@@ -174,6 +175,11 @@ class SkillBar:
         self.hk = {}
         self.last_error = None
         self.bar_visible = True   # jogo em primeiro plano
+        # conferencia "as skills na tela sao deste personagem?"
+        self.slot_icons = None    # icone da wiki esperado em cada skill (ou None)
+        self.wrong_char = False   # outro personagem logado: barras escondidas
+        self.miss_count = 0
+        self.next_check = 0.0
         self.vocacoes = wiki.load_vocacoes()
 
         # buffs
@@ -328,6 +334,9 @@ class SkillBar:
         self.bars = [Bar(self, i) for i, b in enumerate(self.cfg["bars"]) if b["regions"]]
         self.cast_detectors = []
         self.float_win.key = None
+        self.slot_icons = None
+        self.wrong_char = False
+        self.miss_count = 0
 
     def first_bar_window(self):
         shown = [b for b in self.bars if b.shown]
@@ -456,7 +465,7 @@ class SkillBar:
     def render(self):
         """Captura as skills, detecta quando foram usadas e redesenha as barras
         (no modo so buffs a captura continua, so para detectar o uso)."""
-        all_crops = []
+        all_crops, per_bar = [], []
         for bar in self.bars:
             regs = bar.data["regions"]
             left, top = min(r[0] for r in regs), min(r[1] for r in regs)
@@ -467,10 +476,60 @@ class SkillBar:
             crops = [area.crop((x - left, y - top, x - left + w, y - top + h))
                      for x, y, w, h in regs]
             all_crops += crops
-            if not self.cfg.get("only_buffs"):
+            per_bar.append(crops)
+        self.check_character(all_crops)
+        for bar, crops in zip(self.bars, per_bar):
+            if self.cfg.get("only_buffs"):
+                continue
+            if self.wrong_char:
+                bar.hide()
+            else:
                 bar.render(crops)
                 bar.show()
         self.detect_casts(all_crops)
+
+    def expected_icons(self):
+        """Icone da wiki de cada skill (indice global), ou None se desconhecido."""
+        if self.slot_icons is None:
+            voc_slug = self.cfg.get("vocacao") or ""
+            voc = wiki.find_vocacao(self.vocacoes, voc_slug)
+            by = {m["slug"]: m for m in voc["magias"]} if voc else {}
+            icons = []
+            for slug in config.all_magias(self.cfg):
+                m = by.get(slug) if slug else None
+                try:
+                    icons.append(Image.open(wiki.icon_path(voc_slug, m)).convert("RGB")
+                                 if m and wiki.has_icon(voc_slug, m) else None)
+                except OSError:
+                    icons.append(None)
+            self.slot_icons = icons
+        return self.slot_icons
+
+    def check_character(self, crops, every=0.5, misses=4):
+        """Duas vezes por segundo confere se as skills na tela sao as do personagem
+        escolhido. Se nenhuma bate por ~2 s (outro personagem logado, tela de
+        selecao do jogo...), esconde as barras ate elas voltarem a bater."""
+        now = time.monotonic()
+        if now < self.next_check:
+            return
+        self.next_check = now + every
+        ok = localizar.skills_match(crops, self.expected_icons())
+        if ok is None or ok:
+            self.miss_count = 0
+            if self.wrong_char:
+                self.wrong_char = False
+                log_error("Skills do personagem %s de volta na tela: barra mostrada"
+                          % self.cfg.get("profile"))
+            return
+        self.miss_count += 1
+        if self.miss_count >= misses and not self.wrong_char:
+            self.wrong_char = True
+            log_error("As skills na tela nao sao as do personagem %s: barra escondida"
+                      % self.cfg.get("profile"))
+            if self.tray is not None:
+                self.tray.notify("As skills na tela não são do personagem \"%s\". "
+                                 "A barra fica escondida; use \"Trocar personagem\" "
+                                 "se estiver jogando com outro." % self.cfg.get("profile"))
 
     def detect_casts(self, crops):
         """Percebe quando uma skill e usada (icone escurece) e reinicia o tempo do
