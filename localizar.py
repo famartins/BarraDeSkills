@@ -136,14 +136,134 @@ def slot_score(crop, icon, pad=3):
     return m[0] if m else 255.0
 
 
-def skills_match(crops, icons):
-    """As skills na tela sao as do personagem? True se pelo menos uma bate com o
-    icone esperado (as outras podem estar em recarga), False se nenhuma bate,
-    None se nao da para saber (menos de 2 skills com icone conhecido)."""
-    pairs = [(c, i) for c, i in zip(crops, icons) if i is not None]
-    if len(pairs) < 2:
+def match_score(crop, icon, pad=2, keep=0.7):
+    """Como slot_score, mas tolerante a recarga: compensa o icone escurecido e
+    ignora os 30% de pixels que mais diferem (contagem de tempo escrita por cima).
+    0 = mesma skill; ate GOOD_SCORE = com certeza; acima de MAYBE_SCORE = outra."""
+    crop = crop.convert("RGB")
+    w, h = crop.size
+    if w < 8 or h < 8:
+        return 255.0
+    x0, y0, x1, y1 = _core_box((w, h))
+    core = np.asarray(icon.convert("RGB").resize((w, h), Image.BILINEAR)
+                      .crop((x0, y0, x1, y1)), dtype=np.float32)
+    core_med = float(np.median(core.mean(axis=2))) + 1.0
+    a = np.asarray(crop, dtype=np.float32)
+    n = int(core.shape[0] * core.shape[1] * keep)
+    best = 255.0
+    for dy in range(-pad, pad + 1):
+        for dx in range(-pad, pad + 1):
+            if y0 + dy < 0 or x0 + dx < 0 or y1 + dy > h or x1 + dx > w:
+                continue
+            c = a[y0 + dy:y1 + dy, x0 + dx:x1 + dx]
+            gain = min(4.0, max(1.0, core_med / (float(np.median(c.mean(axis=2))) + 1.0)))
+            for g in (1.0, gain) if gain > 1.0 else (1.0,):
+                d = np.abs(np.clip(c * g, 0, 255) - core).mean(axis=2).ravel()
+                best = min(best, float(np.partition(d, n - 1)[:n].mean()))
+    return best
+
+
+def find_ready(area, icon, size):
+    """Procura a skill PRONTA (icone normal) em `area` (PIL RGB, ex.: a barra
+    lateral inteira), com o icone no tamanho `size` da tela.
+    Retorna (diferenca, x, y) do canto do icone dentro da area, ou None."""
+    w, h = size
+    tpl = icon.convert("RGB").resize((w, h), Image.BILINEAR)
+    box = _core_box((w, h))
+    core = np.asarray(tpl.crop(box), dtype=np.int16)
+    m = best_match(np.asarray(area.convert("RGB"), dtype=np.int16), core)
+    if m is None:
         return None
-    return any(slot_score(c, i) <= MAYBE_SCORE for c, i in pairs)
+    score, x, y = m
+    return score, x - box[0], y - box[1]
+
+
+class SlotTracker:
+    """Acompanha onde esta cada skill do personagem na barra lateral do jogo.
+
+    O jogo tem varios "Sets" de barra lateral e cada um poe as skills em lugares
+    diferentes. A cada verificacao, para cada skill com icone conhecido:
+    - continua no lugar (mesmo em recarga)              -> "ok"
+    - mudou de lugar (achada pronta em outra posicao)   -> "ok" e nova regiao
+    - no lugar ha outra coisa e ela nao foi achada      -> "missing" (nao esta
+      neste Set; a barra mostra o icone apagado)
+    - duvida (parece ela, mas nao com certeza)          -> mantem o estado anterior
+    Skills sem icone conhecido ficam sempre "ok" (so copia a tela)."""
+
+    def __init__(self, icons):
+        self.icons = list(icons)
+        self.state = ["ok"] * len(self.icons)
+        self._turn = 0
+
+    def known(self):
+        return [i for i, ic in enumerate(self.icons) if ic is not None]
+
+    def all_missing(self):
+        k = self.known()
+        return bool(k) and all(self.state[i] == "missing" for i in k)
+
+    def check(self, crops, regions, sidebar=None, max_search=4):
+        """crops/regions: recorte e [x, y, w, h] de cada skill (indice global).
+        sidebar: funcao que devolve (imagem_PIL, x, y) da barra lateral, chamada
+        so se precisar procurar. Procura no maximo `max_search` skills por vez
+        (primeiro as que acabaram de sair do lugar; as que ja estavam sumidas vao
+        em rodizio). Retorna {indice: nova_regiao} das que mudaram de lugar."""
+        moved = {}
+        side = None
+        scores = {i: match_score(crops[i], self.icons[i]) for i in self.known()}
+        failing = [i for i in scores if scores[i] > GOOD_SCORE]
+        fresh = [i for i in failing if self.state[i] == "ok"]
+        old = [i for i in failing if self.state[i] != "ok"]
+        if old:
+            k = self._turn % len(old)
+            old = old[k:] + old[:k]
+        self._turn += 1
+        search = set((fresh + old)[:max_search])
+        changed = False
+        doubtful = []
+        for i in self.known():
+            icon, (x, y, w, h), r = self.icons[i], regions[i], scores[i]
+            if r <= GOOD_SCORE:
+                self.state[i] = "ok"
+                continue
+            if sidebar is not None and i in search:
+                if side is None:
+                    side = sidebar() or False
+                if side:
+                    img, sx, sy = side
+                    f = find_ready(img, icon, (w, h))
+                    if f and f[0] <= GOOD_SCORE:
+                        nx, ny = sx + f[1], sy + f[2]
+                        if abs(nx - x) > w / 2 or abs(ny - y) > h / 2:
+                            moved[i] = [nx, ny, w, h]
+                            self.state[i] = "ok"
+                            continue
+            if r > MAYBE_SCORE:
+                if self.state[i] != "missing":
+                    changed = True
+                self.state[i] = "missing"
+            else:
+                doubtful.append(i)
+        # duvida (parece a skill, mas nao com certeza): sozinha costuma ser recarga
+        # com a contagem escrita por cima, entao fica como esta. Mas se outras
+        # skills sumiram/mudaram agora, ou a maioria ja sumiu, a barra lateral
+        # mudou (troca de Set, outro personagem): conta como sumida tambem.
+        known = self.known()
+        gone = sum(1 for i in known if self.state[i] == "missing")
+        if doubtful and (changed or moved or gone * 2 >= len(known)):
+            for i in doubtful:
+                self.state[i] = "missing"
+        return moved
+
+
+def count_found(area, icons, size):
+    """Quantas skills (prontas) de `icons` aparecem em `area`."""
+    n = 0
+    for ic in icons:
+        f = find_ready(area, ic, size)
+        if f and f[0] <= GOOD_SCORE:
+            n += 1
+    return n
 
 
 def _mark_conflicts(results):

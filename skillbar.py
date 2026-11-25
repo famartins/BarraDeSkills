@@ -91,7 +91,7 @@ try:
     import winsound
     import mss
     import numpy as np
-    from PIL import Image
+    from PIL import Image, ImageEnhance
     import localizar
     import sistema
     import telas
@@ -176,9 +176,11 @@ class SkillBar:
         self.last_error = None
         self.bar_visible = True   # jogo em primeiro plano
         # conferencia "as skills na tela sao deste personagem?"
-        self.slot_icons = None    # icone da wiki esperado em cada skill (ou None)
+        self.slots = None         # localizar.SlotTracker: onde esta cada skill
+        self.gray = {}            # icone apagado de cada skill fora do Set atual
         self.wrong_char = False   # outro personagem logado: barras escondidas
-        self.miss_count = 0
+        self.wrong_since = None
+        self.tried_presets = False
         self.next_check = 0.0
         self.vocacoes = wiki.load_vocacoes()
 
@@ -334,9 +336,11 @@ class SkillBar:
         self.bars = [Bar(self, i) for i, b in enumerate(self.cfg["bars"]) if b["regions"]]
         self.cast_detectors = []
         self.float_win.key = None
-        self.slot_icons = None
+        self.slots = None
+        self.gray = {}
         self.wrong_char = False
-        self.miss_count = 0
+        self.wrong_since = None
+        self.tried_presets = False
 
     def first_bar_window(self):
         shown = [b for b in self.bars if b.shown]
@@ -477,7 +481,16 @@ class SkillBar:
                      for x, y, w, h in regs]
             all_crops += crops
             per_bar.append(crops)
-        self.check_character(all_crops)
+        self.check_slots(all_crops)
+        # skill fora do Set atual do jogo: mostra o icone dela apagado (a barra
+        # continua com as skills escolhidas, na mesma ordem)
+        if self.slots is not None and len(self.slots.state) == len(all_crops):
+            k = 0
+            for crops in per_bar:
+                for j, c in enumerate(crops):
+                    if self.slots.state[k] == "missing":
+                        crops[j] = all_crops[k] = self.gray_icon(k, c.size)
+                    k += 1
         for bar, crops in zip(self.bars, per_bar):
             if self.cfg.get("only_buffs"):
                 continue
@@ -488,48 +501,115 @@ class SkillBar:
                 bar.show()
         self.detect_casts(all_crops)
 
-    def expected_icons(self):
-        """Icone da wiki de cada skill (indice global), ou None se desconhecido."""
-        if self.slot_icons is None:
-            voc_slug = self.cfg.get("vocacao") or ""
-            voc = wiki.find_vocacao(self.vocacoes, voc_slug)
-            by = {m["slug"]: m for m in voc["magias"]} if voc else {}
-            icons = []
-            for slug in config.all_magias(self.cfg):
-                m = by.get(slug) if slug else None
-                try:
-                    icons.append(Image.open(wiki.icon_path(voc_slug, m)).convert("RGB")
-                                 if m and wiki.has_icon(voc_slug, m) else None)
-                except OSError:
-                    icons.append(None)
-            self.slot_icons = icons
-        return self.slot_icons
+    def profile_icons(self, prof):
+        """Icone da wiki de cada skill (indice global) de um personagem, ou None."""
+        voc_slug = prof.get("vocacao") or ""
+        voc = wiki.find_vocacao(self.vocacoes, voc_slug)
+        by = {m["slug"]: m for m in voc["magias"]} if voc else {}
+        icons = []
+        for slug in config.all_magias(prof):
+            m = by.get(slug) if slug else None
+            try:
+                icons.append(Image.open(wiki.icon_path(voc_slug, m)).convert("RGB")
+                             if m and wiki.has_icon(voc_slug, m) else None)
+            except OSError:
+                icons.append(None)
+        return icons
 
-    def check_character(self, crops, every=0.5, misses=4):
-        """Duas vezes por segundo confere se as skills na tela sao as do personagem
-        escolhido. Se nenhuma bate por ~2 s (outro personagem logado, tela de
-        selecao do jogo...), esconde as barras ate elas voltarem a bater."""
+    def gray_icon(self, i, size):
+        key = (i, size)
+        if key not in self.gray:
+            icon = self.slots.icons[i].resize(size, Image.BILINEAR)
+            self.gray[key] = ImageEnhance.Brightness(
+                icon.convert("L").convert("RGB")).enhance(0.45)
+        return self.gray[key]
+
+    def grab_sidebar(self):
+        area = self.cfg.get("sidebar_area")
+        if not area:
+            return None
+        x, y, w, h = area
+        return grab_image(self.sct, {"left": x, "top": y, "width": w, "height": h}), x, y
+
+    def check_slots(self, crops):
+        """~3x por segundo confere onde esta cada skill escolhida na barra lateral:
+        - trocou o Set da barra lateral do jogo: segue a skill no lugar novo (ou a
+          mostra apagada, se ela nao esta nesse Set);
+        - nenhuma skill do personagem na tela (outro personagem logado, tela de
+          selecao): esconde as barras e procura um preset salvo que combine."""
         now = time.monotonic()
         if now < self.next_check:
             return
-        self.next_check = now + every
-        ok = localizar.skills_match(crops, self.expected_icons())
-        if ok is None or ok:
-            self.miss_count = 0
+        self.next_check = now + (1.0 if self.wrong_char else 0.3)
+        if self.slots is None:
+            self.slots = localizar.SlotTracker(self.profile_icons(self.cfg))
+        regions = [r for bar in self.bars for r in bar.data["regions"]]
+        if len(regions) != len(self.slots.icons) or len(crops) != len(regions):
+            return
+        before = list(self.slots.state)
+        moved = self.slots.check(crops, regions, self.grab_sidebar)
+        if moved:
+            names = config.all_magias(self.cfg)
+            offsets = config.bar_offsets(self.cfg)
+            for i, reg in moved.items():
+                b = max(j for j, off in enumerate(offsets) if off <= i)
+                self.bars[b].data["regions"][i - offsets[b]] = reg
+                log_error("Skill %s mudou de lugar na barra lateral do jogo (troca de "
+                          "Set): seguindo" % (names[i] if i < len(names) else i))
+            save_config(self.cfg)
+        for i, (a, b) in enumerate(zip(before, self.slots.state)):
+            if (a != b or i in moved) and i < len(self.cast_detectors):
+                self.cast_detectors[i] = CastDetector()   # troca de icone nao e "uso"
+
+        if not self.slots.all_missing():
+            self.wrong_since = None
+            self.tried_presets = False
             if self.wrong_char:
                 self.wrong_char = False
                 log_error("Skills do personagem %s de volta na tela: barra mostrada"
                           % self.cfg.get("profile"))
             return
-        self.miss_count += 1
-        if self.miss_count >= misses and not self.wrong_char:
+        if self.wrong_since is None:
+            self.wrong_since = now
+        if not self.wrong_char:
             self.wrong_char = True
-            log_error("As skills na tela nao sao as do personagem %s: barra escondida"
+            log_error("Nenhuma skill do personagem %s na tela: barra escondida"
                       % self.cfg.get("profile"))
+        if not self.tried_presets and now - self.wrong_since >= 1.0:
+            self.tried_presets = True
+            self.try_other_presets()
+
+    def try_other_presets(self):
+        """Outro personagem logado: troca sozinho para o preset salvo cujas skills
+        estao na barra lateral. Sem nenhum, avisa (a barra fica escondida)."""
+        side = self.grab_sidebar()
+        best, best_n = None, 0
+        if side:
+            img = side[0]
+            for name in config.profile_names(self.cfg):
+                if name == self.cfg.get("profile"):
+                    continue
+                prof = self.cfg["profiles"].get(name) or {}
+                if not prof.get("bars"):
+                    continue
+                icons = [ic for ic in self.profile_icons(prof) if ic is not None]
+                regs = [r for b in prof.get("bars", []) for r in b.get("regions", [])]
+                if not icons or not regs:
+                    continue
+                n = localizar.count_found(img, icons, tuple(regs[0][2:4]))
+                if n >= min(2, len(icons)) and n > best_n:
+                    best, best_n = name, n
+        if best:
+            log_error("Skills na tela sao do personagem %s: preset trocado" % best)
+            self.switch_profile(best)
             if self.tray is not None:
-                self.tray.notify("As skills na tela não são do personagem \"%s\". "
-                                 "A barra fica escondida; use \"Trocar personagem\" "
-                                 "se estiver jogando com outro." % self.cfg.get("profile"))
+                self.tray.notify('Trocado para o personagem "%s".' % best)
+            return
+        log_error("Nenhum preset salvo combina com as skills na tela")
+        if self.tray is not None:
+            self.tray.notify('As skills na tela não são do personagem "%s" e nenhum '
+                             'preset salvo combina. Use "Trocar personagem" para '
+                             'criar um.' % self.cfg.get("profile"))
 
     def detect_casts(self, crops):
         """Percebe quando uma skill e usada (icone escurece) e reinicia o tempo do
