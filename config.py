@@ -45,7 +45,7 @@ DEFAULTS = {
     "opacity": 1.0,            # 0.2 (quase transparente) a 1.0 (opaco)
     "click_through": False,    # cliques atravessam as barras
     "exclude_from_capture": True,  # as barras nao aparecem nas capturas de tela
-    "bg": "#15120F",           # cor de fundo das barras
+    "bg": "#0E0B16",           # cor de fundo das barras
     "game_process": "",        # ex.: "client_02.exe" - vazio = sempre visivel
     "game_title": "",          # trecho do titulo da janela do jogo (opcional)
     "sidebar_area": None,      # [x, y, w, h] da barra lateral de skills do jogo
@@ -69,8 +69,8 @@ def new_bar(orientation="horizontal"):
 
 def migrate(cfg):
     """Converte configuracoes antigas (uma barra so, sem personagens)."""
-    if str(cfg.get("bg", "")).lower() in ("#0b0b0b", "#002e34"):
-        cfg["bg"] = DEFAULTS["bg"]   # fundos antigos -> carvao do tema
+    if str(cfg.get("bg", "")).lower() in ("#0b0b0b", "#002e34", "#15120f"):
+        cfg["bg"] = DEFAULTS["bg"]   # fundos antigos -> fundo do tema atual
     if "regions" in cfg:   # v1/v2: regions/magias/orientation/pos no nivel de cima
         regions = cfg.pop("regions") or []
         bar = new_bar(cfg.pop("orientation", "horizontal") or "horizontal")

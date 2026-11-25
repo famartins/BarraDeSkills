@@ -157,12 +157,13 @@ print da tela e o `diagnostico.txt`.
 - **Sem eco na captura:** `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)` impede que
   as próprias barras apareçam nas capturas, mesmo sobrepostas às skills originais.
 - **Telas:** [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) (`telas.py`),
-  com a identidade visual em `tema.py`: carvão quente com acento em ouro e texto em tom
-  de pergaminho (fundo `#15120F`, superfície `#1F1A16`, borda `#3A3129`, texto `#EDE3D0`
-  e `#A89A84`, acento `#D4A03C`), Barra 1 em vermelho ferrugem (`#C8452F`) e Barra 2 em
-  azul (`#3A7BD5`), texto escuro sobre o ouro, raios de 10–14 px e a fonte
-  [Inter](https://rsms.me/inter/) (licença SIL OFL, em `dados/fontes/`). As barras e
-  buffs sobre o jogo usam as mesmas cores; a moldura do buff acabando continua vermelha.
+  com a identidade visual em `tema.py`: paleta "Arcano neon", com fundo quase preto
+  arroxeado (`#0E0B16`, painéis `#1A1426`, cards `#241C34`, borda `#3A2D57`), texto
+  `#F3EEFF` e `#A99BC9`, roxo `#B57CFF` para seleção (aba ativa, chips, sliders, Barra 1)
+  e verde-limão `#B6FF3B` para as ações principais (botões, toggles, Barra 2), sempre com
+  texto escuro por cima. Raios de 10–14 px e a fonte [Inter](https://rsms.me/inter/)
+  (licença SIL OFL, em `dados/fontes/`). As barras e buffs sobre o jogo usam as mesmas
+  cores; a moldura do buff acabando continua vermelha.
 - **Personagem de cada vocação** (tela de escolha): montado como no
   [provador de roupas da Bloodpedia](https://www.bloodpedia.com.br/outfits/). A folha de
   sprites traz, em blocos de 128×128, a imagem base e uma máscara de cores; `wiki.py`

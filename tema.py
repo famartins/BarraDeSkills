@@ -3,63 +3,63 @@
 Identidade visual (tokens): cores, tipografia, raios e espacamentos.
 
 Um lugar so para o tema; telas.py e overlay.py importam daqui.
-Paleta de carvao quente com acento em ouro e tons de pergaminho
-(proposta-identidade-visual.md):
+Paleta "Arcano neon" (proposta B): roxo para selecao e verde-limao para as
+acoes principais, sobre um fundo quase preto arroxeado.
 
-    Fundo base        #15120F  janela e areas mais profundas
-    Superficie        #1F1A16  cards, paineis e campos de busca
-    Borda             #3A3129  divisores e contornos
-    Texto principal   #EDE3D0  titulos e textos (pergaminho)
-    Texto secundario  #A89A84  legendas e descricoes
-    Acento            #D4A03C  botoes principais, aba ativa, toggles ligados
-    Barra 1           #C8452F  vermelho ferrugem
-    Barra 2           #3A7BD5  azul
+    Fundo base   #0E0B16  janela e areas mais profundas
+    Superficie   #1A1426  paineis e cards
+    Card         #241C34  terceiro nivel (itens dentro dos paineis, hover)
+    Borda        #3A2D57  divisores e contornos
+    Texto        #F3EEFF  titulos e textos
+    Secundario   #A99BC9  legendas e descricoes
+    Roxo         #B57CFF  selecao: aba ativa, chips, sliders, card escolhido, Barra 1
+    Verde-limao  #B6FF3B  acoes principais, toggles ligados, "ultimo usado", Barra 2
 
-Texto escuro sobre o ouro (~8:1); branco sobre o ouro fica ilegivel.
-No azul da Barra 2 o texto e escuro e em negrito (4,4:1, o ponto mais fraco).
+Texto escuro (#0E0B16) sobre o roxo (6,8:1) e sobre o verde-limao (16:1).
 """
 
 import os
 
 # -- cores --------------------------------------------------------------------
-BG = "#15120F"           # fundo base
-SURFACE = "#1F1A16"      # cards e paineis
-SURFACE_HOVER = "#2A231D"  # terceiro nivel: card em destaque / hover
-BORDER = "#3A3129"       # divisores e contornos
-SECONDARY = "#8A6A2E"    # borda no hover: leve brilho dourado
-ACCENT = "#D4A03C"
-ACCENT_HOVER = "#E0B252"
-ON_ACCENT = "#15120F"    # texto sobre o ouro (~8:1)
-HIGHLIGHT = ACCENT       # destaques pontuais (selo "ultimo usado", titulos de dica)
+BG = "#0E0B16"           # fundo base
+SURFACE = "#1A1426"      # paineis e cards
+SURFACE_HOVER = "#241C34"  # terceiro nivel: itens dentro dos paineis / hover
+BORDER = "#3A2D57"       # divisores e contornos
+ACCENT = "#B57CFF"       # roxo: selecao
+ACCENT_HOVER = "#C597FF"
+PRIMARY = "#B6FF3B"      # verde-limao: acoes principais
+PRIMARY_HOVER = "#CAFF70"
+ON_ACCENT = "#0E0B16"    # texto sobre o roxo e sobre o verde-limao
+SECONDARY = ACCENT       # borda no hover / card escolhido
+HIGHLIGHT = PRIMARY      # destaques pontuais (selo "ultimo usado")
 
-TEXT = "#EDE3D0"         # 14,7:1 sobre o fundo
-DIM = "#A89A84"          # 6,3:1 sobre a superficie
-OK = "#7FB069"
-WARN = "#E8B04A"
-ERR = "#E06C5A"
-ERR_HOVER = "#3A1E19"
+TEXT = "#F3EEFF"         # 17:1 sobre o fundo
+DIM = "#A99BC9"          # 7:1 sobre a superficie
+OK = PRIMARY
+WARN = "#FFC857"
+ERR = "#FF8FA3"
+ERR_HOVER = "#3A1A2A"
 
 # cor de cada barra (selos de ordem, B1/B2) e do texto sobre ela
-BAR_COLORS = ("#C8452F", "#3A7BD5")
-ON_BAR = ("#FFFFFF", BG)
+BAR_COLORS = (ACCENT, PRIMARY)
+ON_BAR = (ON_ACCENT, ON_ACCENT)
 
-# etiquetas de tipo das magias (texto pergaminho por cima, 6:1 ou mais)
-TIPO_COR = {"Ataque": "#7A2E22", "Cura": "#2F5A3A", "Suporte": "#25466E"}
+# etiquetas de tipo das magias (texto claro por cima, 6,7:1 ou mais)
+TIPO_COR = {"Ataque": "#7A2E4A", "Cura": "#2E5E3A", "Suporte": "#3B3F8F"}
 
 # -- sobreposicao no jogo ---------------------------------------------------
 BAR_BG = BG                      # fundo das barras (entre os icones)
-OLD_BAR_BG = ("#0b0b0b", "#002e34")   # fundos antigos: migrados para o novo
 WARN_COLOR = "#e0302a"           # moldura do buff acabando (alerta: fica vermelho)
 BOX_BORDER = BORDER              # caixa do modo so buffs
 BOX_TITLE = ACCENT
 BOX_DIM = DIM
 BOX_CELL = SURFACE
 TIP_BG = BG
-TIP_BORDER = SECONDARY
+TIP_BORDER = ACCENT
 TIP_NAME = ACCENT
 TIP_DESC = TEXT
 TIP_TIME = WARN
-MARK_LINE = ACCENT               # tela de marcacao
+MARK_LINE = PRIMARY              # tela de marcacao (bem visivel sobre o jogo)
 MARK_TEXT = TEXT
 MARK_BG = BG
 
