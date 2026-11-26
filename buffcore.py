@@ -74,10 +74,12 @@ class CastDetector:
     jogo aplica em todas as skills quando QUALQUER uma e usada.
     """
 
-    def __init__(self, drop=0.75, recover=0.9, span=0.5):
+    def __init__(self, drop=0.75, recover=0.9, span=0.5, gap=0.5, max_cooling=180.0):
         self.drop = drop
         self.recover = recover
         self.span = span      # "brusca" = em ate `span` segundos (vale para qualquer FPS)
+        self.gap = gap        # sem quadros por mais que isso: recomeca a comparacao
+        self.max_cooling = max_cooling   # nenhuma recarga dura mais que isso
         self.base = None      # brilho com a skill pronta
         self.recent = []      # (instante, brilho) dos ultimos `span` segundos
         self.cooling = False
@@ -85,10 +87,35 @@ class CastDetector:
         self.drop_at = None   # instante da queda atual (enquanto escuro)
         self.last_drop = None  # inicio do ultimo escurecimento que durou >= `long` s
         self.long = 1.5
+        self.last_t = None
+        self.undo = 0.6       # quanto tempo de quadros desfazer ao perceber outra coisa
+        self.history = []     # (instante, base, cooling, drop_at) antes de cada quadro
 
-    def update(self, brightness, now):
-        """Recebe o brilho do quadro atual. Retorna True se o icone acabou de escurecer."""
+    def update(self, brightness, now, seen=True):
+        """Recebe o brilho do quadro atual. Retorna True se o icone acabou de escurecer.
+
+        seen=False: no lugar da skill aparece outra coisa (janela por cima, tela de
+        carregamento). Esse quadro e ignorado: nao conta como uso e, principalmente,
+        nao muda o brilho normal. Antes, um brilho de fora deixava o "normal" alto
+        demais e a skill parecia em recarga para sempre (os usos seguintes nao eram
+        mais percebidos: caso do Vampirismo, que tem o icone escuro)."""
         b = float(brightness)
+        if not seen and self.last_t is not None:
+            # acabou de perceber (com atraso de ate `undo` s): desfaz o que esses
+            # ultimos quadros de fora mudaram
+            old = [s for s in self.history if now - s[0] >= self.undo]
+            if old:
+                _t, self.base, self.cooling, self.drop_at = old[-1]
+            self.history = []
+        if seen:
+            self.history = [s for s in self.history if now - s[0] <= self.undo + 1.0]
+            self.history.append((now, self.base, self.cooling, self.drop_at))
+        if not seen or (self.last_t is not None and now - self.last_t > self.gap):
+            self.recent = []          # comparar so com quadros seguidos da propria skill
+            self.pending = None
+        self.last_t = now if seen else None
+        if not seen:
+            return False
         dropped = False
         if self.base is None:
             self.base = b
@@ -98,8 +125,11 @@ class CastDetector:
             if b >= self.base * self.recover:
                 self.cooling = False
                 self.pending = None   # voltou ao normal: nao era (mais) uma recarga
-        elif b < self.base * self.drop and b < max(
-                [v for _, v in self.recent] or [b]) * self.drop:
+            elif self.drop_at is None or now - self.drop_at > self.max_cooling:
+                self.cooling = False  # "recarga" longa demais: o normal estava errado
+                self.base = b
+        elif b < self.base * self.drop and self.recent and b < max(
+                v for _, v in self.recent) * self.drop:
             self.cooling = True
             self.pending = now
             self.drop_at = now

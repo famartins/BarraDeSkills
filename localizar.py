@@ -225,6 +225,15 @@ class SlotTracker:
         self._turn = 0
         self._thumbs = {}
         self._seen = {}          # i -> (miniatura do lugar, instante, estado, presente)
+        self.scores = {}         # i -> diferenca do lugar para o icone (ultima verificacao)
+
+    def seen(self, i):
+        """No lugar da skill i esta ela mesma (pronta ou em recarga)? Ultima
+        verificacao; skill sem icone conhecido conta como sim."""
+        if i >= len(self.icons) or self.icons[i] is None:
+            return True
+        s = self.scores.get(i)
+        return s is not None and s <= MAYBE_SCORE and self.state[i] == "ok"
 
     def known(self):
         return [i for i, ic in enumerate(self.icons) if ic is not None]
@@ -277,6 +286,7 @@ class SlotTracker:
         now = time.monotonic() if now is None else now
         known = self.known()
         scores = {i: match_score(crops[i], self.icons[i]) for i in known}
+        self.scores = scores
         thumbs, fresh = {}, set()
         for i in known:
             if scores[i] <= GOOD_SCORE:

@@ -46,7 +46,11 @@ user32.EnumWindows.restype = wintypes.BOOL
 ERROR_ALREADY_EXISTS = 183
 WAIT_OBJECT_0 = 0
 APP_NAME = "BarraDeSkills"
-DEFAULT_GAME_TITLE = "bloodstone"   # titulo: "BloodStone - The Ancient Curse [...]"
+DEFAULT_GAME_TITLE = "bloodstone"   # titulo comeca com: "BloodStone - The Ancient Curse [...]"
+# programas que podem ter "Bloodstone" no titulo (aba do site, canal do Discord)
+NOT_GAME = {"chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "brave.exe",
+            "discord.exe", "explorer.exe", "notepad.exe", "code.exe", "whatsapp.exe",
+            "telegram.exe", "obs64.exe", "steam.exe", "steamwebhelper.exe"}
 
 
 # --------------------------------------------------------------------------
@@ -80,11 +84,14 @@ def is_game_window(hwnd, process="", title=""):
     process = (process or "").strip().lower()
     title = (title or "").strip().lower()
     name = window_title(hwnd).lower()
-    if process and window_info(hwnd)[1].lower() == process and (not title or title in name):
+    exe = window_info(hwnd)[1].lower()
+    if process and exe == process and (not title or title in name):
         return True
+    if exe in NOT_GAME:
+        return False      # navegador ou Discord com "Bloodstone" no titulo
     if title and title in name:
         return True
-    return DEFAULT_GAME_TITLE in name
+    return name.startswith(DEFAULT_GAME_TITLE)
 
 
 def find_game_window(process="", title=""):

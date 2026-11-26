@@ -487,6 +487,7 @@ class SkillBar:
             all_crops += crops
             per_bar.append(crops)
         self.check_slots(all_crops)
+        raw = list(all_crops)    # o uso e detectado na tela de verdade (sem o cinza)
         # skill fora do Set atual do jogo: mostra o icone dela apagado (a barra
         # continua com as skills escolhidas, na mesma ordem)
         if self.slots is not None and len(self.slots.state) == len(all_crops):
@@ -504,7 +505,7 @@ class SkillBar:
             else:
                 bar.render(crops)
                 bar.show()
-        self.detect_casts(all_crops)
+        self.detect_casts(raw)
 
     def profile_icons(self, prof, everything=False):
         """Icone da wiki de cada skill (indice global) de um personagem, ou None.
@@ -634,8 +635,11 @@ class SkillBar:
         if len(self.cast_detectors) != len(crops):
             self.cast_detectors = [CastDetector() for _ in crops]
         now = time.monotonic()
-        for c, det in zip(crops, self.cast_detectors):
-            det.update(np.asarray(c).mean(), now)
+        slots = self.slots
+        for i, (c, det) in enumerate(zip(crops, self.cast_detectors)):
+            # outra coisa no lugar (janela por cima, carregando): nao mexe no normal
+            seen = slots is None or len(slots.state) != len(crops) or slots.seen(i)
+            det.update(np.asarray(c).mean(), now, seen)
         # so conta como uso o escurecimento que dura e nao foi junto com as outras
         # skills (recarga global); o tempo reinicia no instante em que escureceu
         for i, cast_time in confirm_casts(self.cast_detectors, now):

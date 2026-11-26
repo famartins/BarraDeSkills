@@ -165,6 +165,15 @@ class ExeRenomeadoTest(unittest.TestCase):
         self.win[1] = (11, "chrome.exe", "Bloodpedia - Wiki")
         self.assertFalse(sistema.is_game_window(1, "client_02.exe"))
 
+    def test_discord_e_chrome_com_bloodstone_no_titulo(self):
+        # caso real: a 0.8.3 achou que o Discord e o Chrome eram o jogo
+        self.win[1] = (12, "Discord.exe",
+                       "#duvidas | Bloodstone: The Ancient Curse (Oficial) - Discord")
+        self.win[2] = (13, "chrome.exe", "BloodStone - The Ancient Curse - Google Chrome")
+        self.win[3] = (14, "outro.exe", "Guia do Bloodstone")
+        for h in (1, 2, 3):
+            self.assertFalse(sistema.is_game_window(h, "client.exe"), h)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -123,6 +123,43 @@ class CastDetectorExtraTest(unittest.TestCase):
         self.assertAlmostEqual(d.last_drop, 6.0, delta=0.05)
 
 
+class CastDetectorOutraCoisaNoLugarTest(unittest.TestCase):
+    """Caso real (Vampirismo, icone escuro: 54 pronto, 26 em recarga): uma janela
+    mais clara apareceu no lugar da skill e o programa passou a achar que ela
+    estava sempre em recarga, sem perceber os usos seguintes."""
+
+    def vamp(self, t):
+        if 6 <= t < 11:
+            return 72.0, False        # outra janela por cima (mais clara)
+        for c in (2.0, 60.0, 130.0):
+            if c <= t < c + 46:
+                return 26.0 + (t - c) / 46 * 15, True   # recarga clareando aos poucos
+        return 54.0, True
+
+    def run_case(self, lag):
+        d = CastDetector()
+        casts, seen, next_chk = [], True, 0.0
+        for k in range(int(180 * FPS)):
+            t = k / FPS
+            b, ok = self.vamp(t)
+            if t >= next_chk:          # o programa confere o lugar a cada `lag` s
+                seen, next_chk = ok, t + lag
+            d.update(b, t, seen)
+            casts += [round(c) for _i, c in confirm_casts([d], t)]
+        return casts
+
+    def test_percebe_todos_os_usos(self):
+        for lag in (0.0, 0.3):
+            self.assertEqual(self.run_case(lag), [2, 60, 130], lag)
+
+    def test_recarga_eterna_se_resolve(self):
+        d = CastDetector(max_cooling=10)
+        d.update(200, 0.0)            # "normal" errado, alto demais
+        for k in range(1, 400):
+            d.update(50 if k < 5 else 54, k / FPS)
+        self.assertFalse(d.cooling)
+
+
 class RenewalTest(unittest.TestCase):
     def test_bug_reusou_perto_do_fim_e_nao_percebeu(self):
         # buff de 600 s; usado de novo aos 590 s (icone escureceu nesse instante)
