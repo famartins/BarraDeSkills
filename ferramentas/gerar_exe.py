@@ -38,6 +38,11 @@ COMO USAR
 Se o Windows mostrar "O Windows protegeu o computador": clique em "Mais informacoes"
 e depois em "Executar assim mesmo". O programa nao e assinado digitalmente.
 
+ATUALIZAR
+Quando sair uma versao nova, o programa avisa ao abrir: clique em "Atualizar agora".
+Ou em Configuracoes > Sobre > "Procurar atualizacao". Sua configuracao, personagens
+e buffs sao mantidos.
+
 Se algo der errado, o arquivo diagnostico.txt (criado nesta pasta) diz o motivo.
 Mande ele numa issue: {repo}/issues
 
@@ -124,4 +129,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] == ["--versao"]:      # usado pela publicacao automatica
+        print(version())
+    else:
+        main()

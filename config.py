@@ -56,6 +56,7 @@ DEFAULTS = {
     "warn_seconds": 10,        # buff pisca nos ultimos N segundos (0 = nunca)
     "warn_sound": False,       # apito quando o buff comeca a piscar
     "track_game": True,        # acompanha a janela do jogo quando ela se move
+    "check_updates": True,     # ao abrir, procura versao nova no GitHub
     "game_anchor": None,       # [x, y] da area do jogo quando as posicoes foram marcadas
     "profile": "",             # personagem ativo
     "profiles": {},            # {nome: {chaves de PROFILE_DEFAULTS}}

@@ -25,7 +25,7 @@ import sistema
 import tema
 import wiki
 
-VERSION = "0.8.4"
+VERSION = "0.9"
 REPO_URL = "https://github.com/famartins/BarraDeSkills"
 ICON_PATH = os.path.join(config.RES_DIR, "dados", "icone.ico")
 
@@ -1453,9 +1453,22 @@ class Settings(Window):
         ctk.CTkLabel(tab, text="Só lê a imagem da tela: não mexe na memória do jogo e não "
                      "envia cliques nem teclas.", font=F(12), text_color=DIM,
                      wraplength=540).pack()
+        up = ctk.CTkFrame(tab, fg_color="transparent")
+        up.pack(fill="x", pady=(14, 0))
+        self.update_lbl = ctk.CTkLabel(up, text="", font=F(12), text_color=DIM, anchor="w")
+        self.update_lbl.pack(side="left")
+        self.update_btn = outline_button(up, "Procurar atualização", self.check_update,
+                                         PRIMARY, width=170)
+        self.update_btn.pack(side="right")
+        upd = ctk.CTkSwitch(tab, text="Procurar versão nova ao abrir o programa", font=F(12),
+                            progress_color=PRIMARY,
+                            command=lambda: self._set("check_updates", bool(upd.get())))
+        if self.app.cfg.get("check_updates", True):
+            upd.select()
+        upd.pack(anchor="w", pady=(8, 0))
         sc = ctk.CTkFrame(tab, fg_color=CARD_HOVER, corner_radius=tema.RADIUS_SM,
                           border_width=1, border_color=BORDER)
-        sc.pack(fill="x", pady=16)
+        sc.pack(fill="x", pady=14)
         atalhos = (("Arrastar", "mover a barra"), ("Roda do mouse", "zoom das barras"),
                    ("Botão direito", "configurações"), ("Ctrl+Alt+F10", "click-through"),
                    ("Ctrl+Alt+F11", "configurações"), ("Ctrl+Alt+F12", "cadastrar buff"))
@@ -1472,3 +1485,81 @@ class Settings(Window):
         ctk.CTkLabel(tab, text="Dados e imagens das magias e vocações: Bloodpedia, projeto da "
                      "comunidade.\nBloodstone e suas imagens pertencem aos seus criadores.",
                      font=F(11), text_color=DIM).pack(pady=12)
+
+    def check_update(self):
+        self.update_lbl.configure(text="Procurando...", text_color=DIM)
+        self.update_btn.configure(state="disabled")
+        self.app.check_update(manual=True)
+
+    def update_status(self, text, color=DIM):
+        """Resposta da procura manual (chamada pelo programa)."""
+        try:
+            self.update_lbl.configure(text=text, text_color=color)
+            self.update_btn.configure(state="normal")
+        except Exception:
+            pass
+
+
+# --------------------------------------------------------------------------
+# Atualizacao
+# --------------------------------------------------------------------------
+class UpdateDialog(Window):
+    """Versao nova publicada: Atualizar agora / Agora nao, com o progresso."""
+
+    def __init__(self, app, info, can_install=True):
+        super().__init__(app, "Barra de Skills - Atualização", (520, 420))
+        self.info = info
+        ctk.CTkLabel(self, text="Versão %s disponível" % info["version"], font=F(20, "bold"),
+                     text_color=TEXT).pack(pady=(20, 2))
+        ctk.CTkLabel(self, text="Você está na %s." % VERSION, font=F(12),
+                     text_color=DIM).pack()
+        notes = ctk.CTkTextbox(self, font=F(12), fg_color=CARD, text_color=TEXT,
+                               border_width=1, border_color=BORDER, wrap="word",
+                               corner_radius=tema.RADIUS_SM)
+        notes.pack(fill="both", expand=True, padx=20, pady=14)
+        notes.insert("1.0", info.get("notes") or "Sem descrição.")
+        notes.configure(state="disabled")
+        self.status = ctk.CTkLabel(self, text="Sua configuração, personagens e buffs são "
+                                   "mantidos.", font=F(12), text_color=DIM)
+        self.status.pack(padx=20, anchor="w")
+        self.bar = ctk.CTkProgressBar(self, progress_color=PRIMARY, fg_color=BORDER)
+        self.bar.set(0)
+        foot = ctk.CTkFrame(self, fg_color="transparent")
+        foot.pack(fill="x", side="bottom", padx=20, pady=16)
+        if can_install:
+            self.go = accent_button(foot, "Atualizar agora", self.start, width=150)
+        else:   # rodando pelo Python (sem .exe): so abre a pagina da versao
+            self.go = accent_button(foot, "Abrir página da versão",
+                                    lambda: (webbrowser.open(info["page"]), self.destroy()),
+                                    width=180)
+        self.go.pack(side="right")
+        self.later = ghost_button(foot, "Agora não", self.destroy, width=110)
+        self.later.pack(side="right", padx=(0, 8))
+
+    def start(self):
+        set_enabled(self.go, False)
+        self.later.configure(state="disabled")
+        self.bar.pack(fill="x", padx=20, pady=(8, 0), before=self.status)
+        self.status.configure(text="Baixando...", text_color=DIM)
+        self.app.start_update(self.info)
+
+    def progress(self, done, total):
+        mb = done / 1e6
+        if total:
+            self.bar.set(min(1.0, done / total))
+            self.status.configure(text="Baixando... %.1f de %.1f MB" % (mb, total / 1e6))
+        else:
+            self.status.configure(text="Baixando... %.1f MB" % mb)
+
+    def ready(self):
+        self.bar.set(1)
+        self.status.configure(text="Pronto! O programa vai fechar e abrir de novo já "
+                              "atualizado.", text_color=OK)
+
+    def failed(self, text):
+        self.status.configure(text=text, text_color=ERR)
+        self.later.configure(state="normal")
+        self.later.configure(text="Fechar")
+        self.go.configure(text="Baixar pelo site",
+                          command=lambda: (webbrowser.open(self.info["page"]), self.destroy()))
+        set_enabled(self.go, True)

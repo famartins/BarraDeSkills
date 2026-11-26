@@ -28,8 +28,13 @@ Na primeira vez, o Windows pode mostrar **"O Windows protegeu o computador"**. C
 **Mais informações** > **Executar assim mesmo**. O aviso aparece porque o programa não é
 assinado digitalmente.
 
-**Para atualizar:** baixe o ZIP novo e extraia **por cima** da pasta antiga. Sua
-configuração (`skillbar_config.json` e a pasta `buffs`) fica preservada.
+**Para atualizar:** a partir da 0.9, o programa avisa ao abrir quando sai uma versão
+nova. Clique em **Atualizar agora**: ele baixa, fecha, troca os arquivos e abre de novo.
+Para procurar na hora: **Configurações** > **Sobre** > **Procurar atualização**. Sua
+configuração, personagens e buffs são mantidos.
+
+Quem está na 0.8.4 ou antes precisa atualizar à mão uma última vez: baixe o ZIP novo e
+extraia **por cima** da pasta antiga.
 
 <details>
 <summary>Rodar pelo código-fonte (com Python)</summary>
@@ -235,6 +240,8 @@ print da tela e o `diagnostico.txt`.
 | `wiki.py` | Carrega `dados/vocacoes.json` e mantém o cache de imagens |
 | `localizar.py` | Acha as magias na barra lateral do jogo |
 | `buffcore.py` | Busca de ícone, cronômetro, detecção de uso da skill e área de busca |
+| `atualizador.py` | Procura versão nova no GitHub, baixa, confere e troca os arquivos |
+| `.github/workflows/publicar.yml` | Gera e publica a release sozinho quando a versão muda |
 | `sistema.py` | Windows: cópia única, ícone na bandeja, janela do jogo, abrir com o Windows |
 | `dados/` | `vocacoes.json` (gerado da Bloodpedia), `icone.ico` e a fonte Inter (`fontes/`) |
 | `ferramentas/atualizar_wiki.py` | Regera o `vocacoes.json` quando a wiki mudar |
@@ -255,8 +262,23 @@ O resultado é `dist/BarraDeSkills-vX.Y-windows.zip`, com `BarraDeSkills.exe` e 
 arquivos de `dados/` e os do CustomTkinter vão embutidos. A versão vem de `VERSION`, em
 `telas.py`.
 
-Para publicar: no GitHub, **Releases** > **Draft a new release** > crie a tag (ex.:
-`v0.4`) > anexe o ZIP > **Publish release**.
+### Publicar uma versão
+
+1. Mude `VERSION` em `telas.py` (ex.: `"0.9"` → `"0.9.1"`).
+2. No GitHub Desktop, faça o commit. O **título e a descrição do commit viram o texto da
+   release**, que aparece na janela de atualização dos usuários.
+3. Dê **Push**.
+
+O GitHub Actions (`.github/workflows/publicar.yml`) roda os testes, gera o `.exe` e cria a
+release `vX.Y` com o ZIP. Leva uns 5 minutos; acompanhe na aba **Actions** do
+repositório. Commits sem mudar a versão não publicam nada. Se a release dessa versão já
+existir, também não.
+
+Os programas abertos dos usuários veem a versão nova ao abrir e oferecem **Atualizar
+agora**. O atualizador baixa o ZIP da release, confere o tamanho e o sha256 informados
+pelo GitHub, e o `.exe` novo (rodando da pasta temporária) espera o antigo fechar.
+Depois troca só o `BarraDeSkills.exe`, a pasta `_internal/` e o `LEIA-ME.txt`, com volta
+atrás se falhar no meio, e abre o programa de novo.
 
 **Versões:** enquanto o programa estiver em teste, as versões são `0.x` (0.4, 0.5...). A
 `1.0` marca o lançamento. Não marque a release como *Pre-release*: o link

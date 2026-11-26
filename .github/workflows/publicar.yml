@@ -1,0 +1,56 @@
+# Publica a release sozinho: quando chega no GitHub um commit com uma VERSION
+# nova em telas.py (e ainda nao existe release dessa versao), gera o .exe,
+# roda os testes e cria a release vX.Y com o ZIP. O texto da release e a
+# mensagem do commit (titulo + descricao escritos no GitHub Desktop).
+# Os programas abertos dos usuarios veem a versao nova e oferecem "Atualizar".
+name: Publicar versao
+
+on:
+  push:
+    branches: [main]
+    paths: [telas.py]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Versao
+        id: ver
+        shell: bash
+        run: |
+          VER=$(python ferramentas/gerar_exe.py --versao)
+          echo "versao=$VER" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VER" > /dev/null 2>&1; then
+            echo "A release v$VER ja existe: nada a fazer."
+            echo "existe=1" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Gerar o .exe e testar
+        if: steps.ver.outputs.existe != '1'
+        shell: bash
+        run: |
+          python -m pip install -r requirements.txt pyinstaller
+          python -m unittest discover -s tests
+          python ferramentas/gerar_exe.py
+
+      - name: Criar a release
+        if: steps.ver.outputs.existe != '1'
+        shell: bash
+        run: |
+          VER=${{ steps.ver.outputs.versao }}
+          git log -1 --format=%B | grep -vi '^co-authored-by:' > notas.txt
+          gh release create "v$VER" "dist/BarraDeSkills-v$VER-windows.zip"             --target "$GITHUB_SHA" --title "Barra de Skills v$VER" --notes-file notas.txt
+        env:
+          GH_TOKEN: ${{ github.token }}

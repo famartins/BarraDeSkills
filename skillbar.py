@@ -92,6 +92,7 @@ try:
     import mss
     import numpy as np
     from PIL import Image, ImageEnhance
+    import atualizador
     import localizar
     import sistema
     import telas
@@ -184,6 +185,8 @@ class SkillBar:
         self.tried_presets = False
         self.next_check = 0.0
         self.vocacoes = wiki.load_vocacoes()
+        self.update_dialog = None  # telas.UpdateDialog aberto
+        self.updating = False
 
         # buffs
         self.buffs = []
@@ -225,6 +228,10 @@ class SkillBar:
         self.keep_on_top()
         self.update_visibility()
         self.buff_tick()
+        if self.cfg.get("check_updates", True):
+            self.root.after(5000, self.check_update)
+        if FROZEN:   # restos de uma atualizacao (o atualizador ja terminou)
+            self.root.after(30000, lambda: atualizador.cleanup(sys.executable))
         try:
             self.root.mainloop()
         finally:
@@ -267,7 +274,9 @@ class SkillBar:
         try:
             while True:
                 req = self.requests.get_nowait()
-                if req == "config":
+                if isinstance(req, tuple):
+                    self.on_update_event(*req)
+                elif req == "config":
                     self.open_settings()
                 elif req == "personagem":
                     self.open_wizard()
@@ -290,6 +299,77 @@ class SkillBar:
         except Exception as exc:
             log_error("Erro ao acompanhar a janela do jogo: %r" % exc)
         self.root.after(250, self.poll_system)
+
+    # -- atualizacao --
+    def check_update(self, manual=False):
+        """Pergunta ao GitHub (em outra thread) se ha versao nova."""
+        def work():
+            try:
+                info = atualizador.latest_release()
+                self.requests.put(("checked", info, manual, None))
+            except Exception as exc:
+                self.requests.put(("checked", None, manual, repr(exc)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def start_update(self, info):
+        """Baixa e prepara a versao nova (em outra thread)."""
+        if self.updating:
+            return
+        self.updating = True
+        log_error("Atualizacao: baixando a versao %s" % info["version"])
+
+        def work():
+            try:
+                new_dir = atualizador.prepare(
+                    info, lambda d, t: self.requests.put(("progress", d, t)))
+                self.requests.put(("ready", new_dir))
+            except Exception as exc:
+                self.requests.put(("failed", repr(exc)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def on_update_event(self, kind, *args):
+        settings = self.settings if alive(self.settings) else None
+        dlg = self.update_dialog if alive(self.update_dialog) else None
+        if kind == "checked":
+            info, manual, err = args
+            if err:
+                log_error("Atualizacao: nao deu para procurar versao nova (%s)" % err)
+                if settings and manual:
+                    settings.update_status("Sem conexão com o GitHub.", telas.ERR)
+                return
+            if info and atualizador.is_newer(info["version"], telas.VERSION):
+                log_error("Atualizacao: versao %s disponivel (esta e a %s)"
+                          % (info["version"], telas.VERSION))
+                if settings:
+                    settings.update_status("Versão %s disponível!" % info["version"],
+                                           telas.OK)
+                if not dlg:
+                    self.update_dialog = telas.UpdateDialog(self, info, can_install=FROZEN)
+            elif settings and manual:
+                settings.update_status("Você já tem a versão mais nova.", telas.OK)
+        elif kind == "progress" and dlg:
+            dlg.progress(*args)
+        elif kind == "ready":
+            new_dir, = args
+            if dlg:
+                dlg.ready()
+            log_error("Atualizacao: pronta, fechando para trocar os arquivos")
+            try:
+                atualizador.launch(new_dir, BASE_DIR, os.getpid())
+            except Exception as exc:
+                self.updating = False
+                log_error("Atualizacao: nao deu para abrir o atualizador (%r)" % exc)
+                if dlg:
+                    dlg.failed("Não deu para atualizar sozinho. Baixe pelo site.")
+                return
+            self.root.after(1200, self.quit)
+        elif kind == "failed":
+            self.updating = False
+            err, = args
+            log_error("Atualizacao: falhou (%s)" % err)
+            if dlg:
+                dlg.failed("Não deu para baixar a versão nova. Tente de novo mais tarde "
+                           "ou baixe pelo site.")
 
     def track_game(self):
         """Acha a janela do jogo; se ela andou, desloca as posicoes marcadas nela.
@@ -1140,6 +1220,11 @@ class SkillBar:
 
 # --------------------------------------------------------------------------
 def main():
+    if len(sys.argv) >= 4 and sys.argv[1] == atualizador.APPLY_FLAG:
+        # .exe novo (na pasta temporaria) trocando os arquivos do programa instalado
+        atualizador.apply_update(sys.argv[2], int(sys.argv[3]),
+                                 start="--nao-abrir" not in sys.argv)
+        return
     parser = argparse.ArgumentParser(description="Barra de Skills")
     parser.add_argument("--calibrar", action="store_true",
                         help="marca os icones da barra 1 manualmente ao iniciar")
