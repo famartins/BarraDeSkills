@@ -113,8 +113,12 @@ def main():
     with open(os.path.join(app_dir, "LEIA-ME.txt"), "w", encoding="utf-8") as f:
         f.write(LEIA_ME.format(version=ver, repo="https://github.com/famartins/BarraDeSkills"))
     zip_path = os.path.join(DIST, "%s-v%s-windows.zip" % (NAME, ver))
-    if os.path.exists(zip_path):
-        os.remove(zip_path)
+    # em dist/ fica so o ZIP da versao nova (os antigos ja estao nas releases)
+    for fn in os.listdir(DIST):
+        if re.fullmatch(r"%s-v[\d.]+-windows\.zip" % NAME, fn):
+            os.remove(os.path.join(DIST, fn))
+            if fn != os.path.basename(zip_path):
+                print("apagado:", fn)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
         for folder, dirs, files in os.walk(app_dir):
             if folder == app_dir:   # nunca leva a configuracao/buffs de quem gerou

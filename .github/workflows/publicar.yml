@@ -1,7 +1,7 @@
 # Publica a release sozinho: quando chega no GitHub um commit com uma VERSION
 # nova em telas.py (e ainda nao existe release dessa versao), gera o .exe,
 # roda os testes e cria a release vX.Y com o ZIP. O texto da release e a
-# mensagem do commit (titulo + descricao escritos no GitHub Desktop).
+# mensagem do commit que mudou a VERSION.
 # Os programas abertos dos usuarios veem a versao nova e oferecem "Atualizar".
 name: Publicar versao
 
@@ -19,6 +19,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # historico: o texto da release vem do commit da versao
 
       - uses: actions/setup-python@v5
         with:
@@ -50,7 +52,7 @@ jobs:
         shell: bash
         run: |
           VER=${{ steps.ver.outputs.versao }}
-          git log -1 --format=%B | grep -vi '^co-authored-by:' > notas.txt
+          git log -1 --format=%B -G '^VERSION = ' -- telas.py | grep -vi '^co-authored-by:' > notas.txt
           gh release create "v$VER" "dist/BarraDeSkills-v$VER-windows.zip"             --target "$GITHUB_SHA" --title "Barra de Skills v$VER" --notes-file notas.txt
         env:
           GH_TOKEN: ${{ github.token }}

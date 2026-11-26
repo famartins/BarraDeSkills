@@ -257,7 +257,7 @@ pip install pyinstaller
 python ferramentas/gerar_exe.py
 ```
 
-O resultado é `dist/BarraDeSkills-vX.Y-windows.zip`, com `BarraDeSkills.exe` e a pasta
+O resultado é `dist/BarraDeSkills-vX.Y-windows.zip` (os ZIPs de versões antigas são apagados), com `BarraDeSkills.exe` e a pasta
 `_internal/`. O build usa o modo pasta (`--onedir`) e `--windowed`, sem console. Os
 arquivos de `dados/` e os do CustomTkinter vão embutidos. A versão vem de `VERSION`, em
 `telas.py`.
