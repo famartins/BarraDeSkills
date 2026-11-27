@@ -25,7 +25,7 @@ import sistema
 import tema
 import wiki
 
-VERSION = "0.9"
+VERSION = "0.9.1"
 REPO_URL = "https://github.com/famartins/BarraDeSkills"
 ICON_PATH = os.path.join(config.RES_DIR, "dados", "icone.ico")
 
@@ -1206,6 +1206,12 @@ class Settings(Window):
         if cfg.get("only_buffs"):
             sw.select()
         sw.pack(anchor="w", pady=(4, 0))
+        vsw = ctk.CTkSwitch(tab, text="Buffs na vertical: a janelinha de buffs mostra os "
+                            "ícones um embaixo do outro", font=F(12), progress_color=PRIMARY,
+                            command=lambda: self.app.set_buff_vertical(bool(vsw.get())))
+        if cfg.get("buff_vertical"):
+            vsw.select()
+        vsw.pack(anchor="w", pady=(4, 0))
 
     def new_profile(self):
         name = ask_text(self, "Novo personagem", "Nome do personagem:")

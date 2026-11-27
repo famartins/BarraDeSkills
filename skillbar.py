@@ -475,6 +475,11 @@ class SkillBar:
         self.float_win.key = None
         save_config(self.cfg)
 
+    def set_buff_vertical(self, on):
+        self.cfg["buff_vertical"] = bool(on)
+        self.float_win.key = None
+        save_config(self.cfg)
+
     def on_wheel(self, e):
         step = 0.1 if e.delta > 0 else -0.1
         self.cfg["zoom"] = round(max(0.5, min(4.0, float(self.cfg["zoom"]) + step)), 1)

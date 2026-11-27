@@ -323,6 +323,7 @@ BarraDeSkills.exe (ou python skillbar.py)    inicia
 | `bars` | Até 2 barras: `{regions, magias, orientation, pos}` |
 | `buffs` | `{name, duration, desc, file, skill, skill_slug, restart_on_cast}`. `skill` é o índice **global** da skill (barra 1, depois barra 2) ou `null`. `skill_slug` mantém o vínculo se a ordem mudar |
 | `only_buffs` | Esconde as barras e mostra só os buffs |
+| `buff_vertical` | Janelinha de buffs em coluna (um ícone embaixo do outro) |
 
 O programa ativa *DPI awareness* por monitor, então as coordenadas são pixels reais
 mesmo com escala do Windows acima de 100%.

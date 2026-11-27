@@ -51,6 +51,7 @@ DEFAULTS = {
     "sidebar_area": None,      # [x, y, w, h] da barra lateral de skills do jogo
     "buff_area": None,         # [x, y, w, h] onde os icones de buff aparecem no jogo
     "buff_pos": None,          # posicao da janelinha de buffs soltos
+    "buff_vertical": False,    # janelinha de buffs (soltos / so buffs) em coluna
     "buff_threshold": 14,      # tolerancia do reconhecimento (menor = mais exato)
     "buff_zoom": 1.5,          # ampliacao extra dos icones de buff (eles sao pequenos)
     "warn_seconds": 10,        # buff pisca nos ultimos N segundos (0 = nunca)
