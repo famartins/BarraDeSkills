@@ -25,7 +25,7 @@ import sistema
 import tema
 import wiki
 
-VERSION = "0.9.1"
+VERSION = "0.9.2"
 REPO_URL = "https://github.com/famartins/BarraDeSkills"
 ICON_PATH = os.path.join(config.RES_DIR, "dados", "icone.ico")
 
@@ -1207,7 +1207,7 @@ class Settings(Window):
             sw.select()
         sw.pack(anchor="w", pady=(4, 0))
         vsw = ctk.CTkSwitch(tab, text="Buffs na vertical: a janelinha de buffs mostra os "
-                            "ícones um embaixo do outro", font=F(12), progress_color=PRIMARY,
+                            "ícones um embaixo do outro, só com a borda", font=F(12), progress_color=PRIMARY,
                             command=lambda: self.app.set_buff_vertical(bool(vsw.get())))
         if cfg.get("buff_vertical"):
             vsw.select()

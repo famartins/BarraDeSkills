@@ -553,37 +553,43 @@ class BuffWindow:
                 icon = Image.blend(icon, Image.new("RGB", icon.size, "black"), 0.7)
             cells.append((icon, b, w_state))
 
-        profile = cfg.get("profile") or ""
         vert = self.vertical()
-        # em coluna a caixa e estreita: o personagem vai numa segunda linha
-        sub = profile if vert else ""
-        title = "BUFFS" + ("  ·  %s" % profile if profile and not vert else "")
-        empty = "sem buffs" if vert else "nenhum buff ativo"
-        tw = max(_text_w(title, title_font), _text_w(sub, note_font) if sub else 0)
-        header_h = title_font.size + 10 + (note_font.size + 4 if sub else 0)
-        if cells and vert:
-            row_w = max(i.width for i, _b, _w in cells) + 2 * pad
-            row_h = sum(i.height + 2 * pad for i, _b, _w in cells) + gap * (len(cells) - 1)
-        elif cells:
-            row_w = sum(i.width + 2 * pad for i, _b, _w in cells) + gap * (len(cells) - 1)
-            row_h = max(i.height for i, _b, _w in cells) + 2 * pad
+        if vert:
+            # coluna enxuta: so os icones dentro de uma borda roxa, sem titulo
+            margin = max(3, round(4 * zoom))
+            if cells:
+                row_w = max(i.width for i, _b, _w in cells) + 2 * pad
+                row_h = sum(i.height + 2 * pad for i, _b, _w in cells) + gap * (len(cells) - 1)
+            else:    # sem buff ativo: caixa vazia do tamanho de um icone
+                row_w = row_h = round(16 * z) + 2 * pad
+            w, h = row_w + 2 * margin, row_h + 2 * margin
+            box = Image.new("RGB", (w, h), cfg["bg"])
+            ImageDraw.Draw(box).rectangle((0, 0, w - 1, h - 1), outline=BOX_TITLE)
+            x, y0 = margin, margin
         else:
-            row_w, row_h = _text_w(empty, note_font), note_font.size + 8
-        w = max(row_w, tw, 0 if vert else round(110 * zoom)) + 2 * margin
-        h = margin + header_h + row_h + margin
-        box = Image.new("RGB", (w, h), cfg["bg"])
-        d = ImageDraw.Draw(box)
-        d.rectangle((0, 0, w - 1, h - 1), outline=BOX_BORDER)
-        d.text((margin, margin - 2), title, fill=BOX_TITLE, font=title_font)
-        if sub:
-            d.text((margin, margin + title_font.size + 2), sub, fill=BOX_DIM, font=note_font)
-        line_y = margin + header_h - 5
-        d.line((margin, line_y, w - margin, line_y), fill=BOX_BORDER)
+            profile = cfg.get("profile") or ""
+            title = "BUFFS" + ("  ·  %s" % profile if profile else "")
+            empty = "nenhum buff ativo"
+            tw = _text_w(title, title_font)
+            header_h = title_font.size + 10
+            if cells:
+                row_w = sum(i.width + 2 * pad for i, _b, _w in cells) + gap * (len(cells) - 1)
+                row_h = max(i.height for i, _b, _w in cells) + 2 * pad
+            else:
+                row_w, row_h = _text_w(empty, note_font), note_font.size + 8
+            w = max(row_w, tw, round(110 * zoom)) + 2 * margin
+            h = margin + header_h + row_h + margin
+            box = Image.new("RGB", (w, h), cfg["bg"])
+            d = ImageDraw.Draw(box)
+            d.rectangle((0, 0, w - 1, h - 1), outline=BOX_BORDER)
+            d.text((margin, margin - 2), title, fill=BOX_TITLE, font=title_font)
+            line_y = margin + header_h - 5
+            d.line((margin, line_y, w - margin, line_y), fill=BOX_BORDER)
+            x, y0 = margin, margin + header_h
+            if not cells:
+                d.text((margin, y0 + 2), empty, fill=BOX_DIM, font=note_font)
 
         self.slots = []
-        x, y0 = margin, margin + header_h
-        if not cells:
-            d.text((margin, y0 + 2), empty, fill=BOX_DIM, font=note_font)
         for icon, b, w_state in cells:
             cw, ch = icon.width + 2 * pad, icon.height + 2 * pad
             if vert:     # um embaixo do outro, centralizados na coluna
