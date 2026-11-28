@@ -53,7 +53,7 @@ DEFAULTS = {
     "buff_pos": None,          # posicao da janelinha de buffs soltos
     "buff_vertical": False,    # janelinha de buffs (soltos / so buffs) em coluna
     "buff_threshold": 14,      # tolerancia do reconhecimento (menor = mais exato)
-    "buff_zoom": 1.5,          # ampliacao extra dos icones de buff (eles sao pequenos)
+    "buff_zoom": 2,            # ampliacao dos icones de buff (1x, 2x, 3x...: inteira)
     "warn_seconds": 10,        # buff pisca nos ultimos N segundos (0 = nunca)
     "warn_sound": False,       # apito quando o buff comeca a piscar
     "track_game": True,        # acompanha a janela do jogo quando ela se move

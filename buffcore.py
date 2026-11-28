@@ -87,7 +87,7 @@ def snap_icon(img, cx, cy, min_size=12, max_size=26, max_ratio=1.35):
     gy[1:H, :] = np.abs(np.diff(a, axis=0)).sum(axis=2)
     cgx = np.vstack([np.zeros((1, W + 1)), np.cumsum(gx, axis=0)])   # soma por coluna
     cgy = np.hstack([np.zeros((H + 1, 1)), np.cumsum(gy, axis=1)])   # soma por linha
-    best = None
+    cands = []
     for h in range(min_size, max_size + 1):
         for w in range(min_size, max_size + 1):
             if max(w, h) > max_ratio * min(w, h):
@@ -102,12 +102,44 @@ def snap_icon(img, cx, cy, min_size=12, max_size=26, max_ratio=1.35):
             top = (cgy[Y, X + w] - cgy[Y, X]) / w
             bottom = (cgy[Y + h, X + w] - cgy[Y + h, X]) / w
             score = np.minimum(np.minimum(left, right), np.minimum(top, bottom))
-            i = np.unravel_index(int(np.argmax(score)), score.shape)
-            if best is None or score[i] > best[0]:
-                best = (float(score[i]), int(X[i]), int(Y[i]), w, h)
-    if best is None or best[0] < 30:      # nada com borda: clicou fora de um icone
+            for i in np.argsort(score, axis=None)[-6:]:
+                yi, xi = np.unravel_index(int(i), score.shape)
+                cands.append((float(score[yi, xi]), int(X[yi, xi]), int(Y[yi, xi]), w, h))
+    if not cands:
         return None
+    cands.sort(reverse=True)
+    top_score = cands[0][0]
+    if top_score < 30:                    # nada com borda: clicou fora de um icone
+        return None
+
+    def ring_noise(c):
+        """Variacao da faixa de 1 px logo FORA do quadrado. Em volta de um icone
+        de verdade ha fundo ou o vao entre icones (quase liso); um quadrado que
+        pega metade de dois icones tem desenho dos dois lados."""
+        _s, x, y, w, h = c
+        ring = np.concatenate([a[y - 1, x - 1:x + w + 1], a[y + h, x - 1:x + w + 1],
+                               a[y:y + h, x - 1], a[y:y + h, x + w]])
+        return float(np.abs(ring - np.median(ring, axis=0)).sum(axis=1).mean())
+    # entre os quadrados de borda forte (ate 30% abaixo do melhor), o de entorno
+    # mais liso
+    good = [c for c in cands[:40] if c[0] >= 0.7 * top_score]
+    best = min(good, key=lambda c: ring_noise(c) - 0.5 * c[0])
     return best[1] + ox, best[2] + oy, best[3], best[4]
+
+
+ICON_SIZE = 18   # icones de buff/efeito do jogo: 18x18 px
+
+
+def icon_view_rect(box, size=ICON_SIZE):
+    """Quadrado do icone inteiro a partir do que snap_icon achou. O snap costuma
+    pegar o desenho de dentro (14 ou 16 px, sem a moldura com cantos
+    transparentes); o icone inteiro tem `size` px em volta do mesmo centro.
+    Retorna (x, y, lado)."""
+    x, y, w, h = box
+    side = max(size, w, h)
+    cx2, cy2 = 2 * x + w, 2 * y + h          # centro x2 (sem perder meio pixel)
+    return (cx2 - side) // 2, (cy2 - side) // 2, side
+
 
 
 class CastDetector:

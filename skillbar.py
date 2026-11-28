@@ -98,7 +98,7 @@ try:
     import telas
     import wiki
     from buffcore import (BuffTracker, CastDetector, confirm_casts, expand_buff_area,
-                          learn_duration, snap_icon,
+                          icon_view_rect, learn_duration, snap_icon,
                           find_template, renewal_time)
     from overlay import (BROWSERS, Bar, BuffWindow, Calibrator, enable_dpi_awareness,
                          grab_image, key_down, list_windows, user32, window_info,
@@ -825,7 +825,45 @@ class SkillBar:
                 "file": b["file"],
                 "img": img,
                 "arr": np.asarray(img),
+                "view": self.load_view(b),
             })
+
+    @staticmethod
+    def load_view(b):
+        """Icone inteiro do buff (so para mostrar; a busca usa o miolo)."""
+        if not b.get("view"):
+            return None
+        try:
+            return Image.open(os.path.join(BASE_DIR, b["view"])).convert("RGB")
+        except OSError:
+            return None
+
+    def heal_view(self, b, arr, hit):
+        """Buff cadastrado antes de existir o icone inteiro: na primeira vez que ele e
+        achado na tela, pega o icone inteiro em volta e guarda."""
+        b["view_tried"] = True
+        _score, x, y = hit
+        th, tw = b["arr"].shape[:2]
+        box = snap_icon(arr, x + tw // 2, y + th // 2, min_size=14, max_size=24,
+                        max_ratio=1.0)
+        if not box:
+            return
+        vx, vy, vs = icon_view_rect(box)
+        if vx < 0 or vy < 0 or vx + vs > arr.shape[1] or vy + vs > arr.shape[0]:
+            return
+        view = Image.fromarray(np.ascontiguousarray(arr[vy:vy + vs, vx:vx + vs]))
+        if not 0 <= b["ci"] < len(self.cfg["buffs"]):
+            return
+        fname = b["file"][:-4] + "_icone.png"
+        try:
+            view.save(os.path.join(BASE_DIR, fname))
+        except OSError:
+            return
+        self.cfg["buffs"][b["ci"]]["view"] = fname
+        b["view"] = view
+        save_config(self.cfg)
+        log_error("Buff %s: icone inteiro guardado (%dx%d)" % (b["name"], vs, vs))
+        self.refresh_settings()
 
     def buff_tick(self):
         if not self.paused:
@@ -858,7 +896,10 @@ class SkillBar:
         thr = float(self.cfg["buff_threshold"])
         active = []
         for b in self.buffs:
-            found = find_template(arr, b["arr"], thr) is not None
+            hit = find_template(arr, b["arr"], thr)
+            found = hit is not None
+            if found and b["view"] is None and not b.get("view_tried"):
+                self.heal_view(b, arr, hit)
             if self.tracker.update(b["file"], found, now, b["duration"]) == "novo":
                 log_error("Buff %s: apareceu, contagem de %g s iniciada"
                           % (b["name"], b["duration"]))
@@ -1037,10 +1078,14 @@ class SkillBar:
             snapped = []
 
             def snap(arr, x, y):
-                found = snap_icon(arr, x, y)
-                if found:
-                    snapped.append(tuple(found))
-                return found
+                box = snap_icon(arr, x, y, min_size=14, max_size=24, max_ratio=1.0)
+                if not box:
+                    return None
+                vx, vy, vs = icon_view_rect(box)
+                vx = max(0, min(vx, arr.shape[1] - vs))
+                vy = max(0, min(vy, arr.shape[0] - vs))
+                snapped.append((vx, vy, vs, vs))
+                return snapped[-1]
             rect, icon = self.pick_rect(
                 "ADICIONAR BUFF - deixe o buff ATIVO no jogo\n"
                 "CLIQUE no meio do icone do buff: o programa acha o quadrado sozinho.\n"
@@ -1048,15 +1093,18 @@ class SkillBar:
                 "Esc: cancelar.", snap=snap)
             if icon is None:
                 return
+            view = None
             if snapped and tuple(rect[2:]) == snapped[-1][2:]:
-                # so o miolo: a moldura e o fundo em volta variam no jogo
-                m = 2 if min(icon.size) >= 14 else 1
-                icon = icon.crop((m, m, icon.width - m, icon.height - m))
+                # mostra o icone inteiro; a busca usa so o miolo (a moldura e o
+                # fundo em volta variam no jogo)
+                view = icon
+                m = 2
+                icon = view.crop((m, m, view.width - m, view.height - m))
             if not self.cfg.get("buff_area"):
                 # a busca amplia sozinha em volta (linha inteira e 3 linhas)
                 self.cfg["buff_area"] = list(rect)
                 save_config(self.cfg)
-            data = telas.BuffEditor(self, icon).run()
+            data = telas.BuffEditor(self, view or icon).run()
             if data == "retry":
                 continue
             if not data:
@@ -1072,7 +1120,11 @@ class SkillBar:
             n += 1
             fname = "buffs/%s_%d.png" % (slug, n)
         icon.save(os.path.join(BASE_DIR, fname))
-        self.cfg["buffs"].append(dict(self.with_skill_slug(data), file=fname))
+        entry = dict(self.with_skill_slug(data), file=fname)
+        if view is not None:
+            entry["view"] = fname[:-4] + "_icone.png"
+            view.save(os.path.join(BASE_DIR, entry["view"]))
+        self.cfg["buffs"].append(entry)
         save_config(self.cfg)
         self.load_buffs()
         self.refresh_settings()
@@ -1089,7 +1141,7 @@ class SkillBar:
         if not 0 <= i < len(self.buffs):
             return
         b = self.buffs[i]
-        data = telas.BuffEditor(self, b["img"], b).run()
+        data = telas.BuffEditor(self, b["view"] or b["img"], b).run()
         if data:
             self.cfg["buffs"][b["ci"]].update(self.with_skill_slug(data))
             save_config(self.cfg)

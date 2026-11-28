@@ -365,6 +365,15 @@ def _text_w(text, font):
     return right - left
 
 
+def buff_icon(b, cfg):
+    """Icone do buff para mostrar: o icone inteiro (view) quando existe, ampliado
+    por um numero INTEIRO de vezes (pixel art: todo pixel do mesmo tamanho, nitido).
+    O zoom das barras nao entra: o tamanho dos buffs tem ajuste proprio."""
+    src = b.get("view") or b["img"]
+    f = max(1, int(round(float(cfg.get("buff_zoom", 2)))))
+    return src.resize((src.width * f, src.height * f), RESAMPLE) if f > 1 else src
+
+
 class BuffWindow:
     """Buffs ativos com tooltip (nome, descricao, tempo restante).
 
@@ -486,13 +495,10 @@ class BuffWindow:
         vert = self.vertical()
         gap = int(cfg["gap"])
         pad = max(1, round(2 * float(cfg["zoom"])))   # moldura em volta de cada icone
-        z = float(cfg["zoom"]) * float(cfg["buff_zoom"])
         centers = self.bar.slot_centers if self.bar else []
         scaled = []
         for (b, s), w_state in zip(items, warn):
-            w, h = b["img"].size
-            sw, sh = max(1, round(w * z)), max(1, round(h * z))
-            icon = b["img"].resize((sw, sh), RESAMPLE) if (sw, sh) != (w, h) else b["img"]
+            icon = buff_icon(b, cfg)
             if w_state == 2:
                 icon = Image.blend(icon, Image.new("RGB", icon.size, "black"), 0.7)
             scaled.append((icon, b, s, w_state))
@@ -552,7 +558,7 @@ class BuffWindow:
         """Caixa do modo so buffs: titulo com o personagem e os buffs ativos em fila."""
         cfg = self.app.cfg
         zoom = float(cfg["zoom"])
-        z = zoom * float(cfg["buff_zoom"])
+        z = max(1, int(round(float(cfg["buff_zoom"]))))
         gap = max(3, int(cfg["gap"]))
         pad = max(1, round(2 * zoom))
         margin = max(6, round(8 * zoom))
@@ -561,9 +567,7 @@ class BuffWindow:
 
         cells = []
         for (b, _s), w_state in zip(items, warn):
-            w, h = b["img"].size
-            sw, sh = max(1, round(w * z)), max(1, round(h * z))
-            icon = b["img"].resize((sw, sh), RESAMPLE) if (sw, sh) != (w, h) else b["img"]
+            icon = buff_icon(b, cfg)
             if w_state == 2:
                 icon = Image.blend(icon, Image.new("RGB", icon.size, "black"), 0.7)
             cells.append((icon, b, w_state))
@@ -576,7 +580,7 @@ class BuffWindow:
                 row_w = max(i.width for i, _b, _w in cells) + 2 * pad
                 row_h = sum(i.height + 2 * pad for i, _b, _w in cells) + gap * (len(cells) - 1)
             else:    # sem buff ativo: caixa vazia do tamanho de um icone
-                row_w = row_h = round(16 * z) + 2 * pad
+                row_w = row_h = 18 * z + 2 * pad
             w, h = row_w + 2 * margin, row_h + 2 * margin
             box = Image.new("RGB", (w, h), cfg["bg"])
             ImageDraw.Draw(box).rectangle((0, 0, w - 1, h - 1), outline=BOX_TITLE)

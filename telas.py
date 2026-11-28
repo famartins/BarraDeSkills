@@ -25,7 +25,7 @@ import sistema
 import tema
 import wiki
 
-VERSION = "0.10.2"
+VERSION = "0.10.3"
 REPO_URL = "https://github.com/famartins/BarraDeSkills"
 ICON_PATH = os.path.join(config.RES_DIR, "dados", "icone.ico")
 
@@ -1351,8 +1351,8 @@ class Settings(Window):
         self.buff_rows = ctk.CTkScrollableFrame(tab, fg_color="transparent", height=150)
         self.buff_rows.pack(fill="both", expand=True, pady=8)
         accent_button(tab, "+ Adicionar buff", self.app.add_buff).pack(fill="x")
-        self._slider(tab, "Tamanho dos ícones de buff", "buff_zoom", 1.0, 5.0, 0.1,
-                     lambda v: "%.1fx" % v)
+        self._slider(tab, "Tamanho dos ícones de buff", "buff_zoom", 1, 4, 1,
+                     lambda v: "%dx" % round(v))
         self._slider(tab, "Piscar quando faltar", "warn_seconds", 0, 30, 1,
                      lambda v: "%d s" % v if v else "nunca")
         snd = ctk.CTkFrame(tab, fg_color="transparent")
@@ -1390,7 +1390,7 @@ class Settings(Window):
             row = ctk.CTkFrame(self.buff_rows, fg_color=CARD_HOVER, corner_radius=10,
                                border_width=1, border_color=BORDER)
             row.pack(fill="x", padx=4, pady=3)
-            img = b["img"]
+            img = b.get("view") or b["img"]
             ctk.CTkLabel(row, text="", image=cimg(img, (img.width * 2, img.height * 2))
                          ).pack(side="left", padx=10, pady=6)
             s = b.get("skill")

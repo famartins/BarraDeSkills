@@ -312,7 +312,7 @@ BarraDeSkills.exe (ou python skillbar.py)    inicia
 | `sidebar_area` | `null` | `[x, y, largura, altura]` da barra lateral de skills do jogo |
 | `buff_area` | `null` | `[x, y, largura, altura]` da área de buffs no jogo |
 | `buff_pos` | `null` | Posição da janelinha de buffs soltos |
-| `buff_zoom` | `1.5` | Ampliação extra dos ícones de buff |
+| `buff_zoom` | `2` | Ampliação dos ícones de buff, em vezes inteiras (1x, 2x...), para ficarem nítidos |
 | `buff_threshold` | `14` | Tolerância do reconhecimento (menor = mais exato) |
 | `warn_seconds` / `warn_sound` | `10` / `false` | Piscar nos últimos N segundos (0 = nunca) e apito |
 | `profile` / `profiles` | `""` / `{}` | Personagem ativo e os dados de cada personagem |

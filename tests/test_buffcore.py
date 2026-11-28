@@ -288,3 +288,12 @@ class MedidaDepoisDeSairDoJogoTest(unittest.TestCase):
         for s in range(301, 391):
             t.update("ira", True, float(s))
         self.assertAlmostEqual(t.measure("ira"), 90.0)
+
+
+class IconeInteiroTest(unittest.TestCase):
+    def test_quadrado_de_18_em_volta_do_desenho(self):
+        from buffcore import icon_view_rect
+        self.assertEqual(icon_view_rect((11, 21, 16, 16)), (10, 20, 18))   # sem a moldura
+        self.assertEqual(icon_view_rect((10, 20, 18, 18)), (10, 20, 18))
+        self.assertEqual(icon_view_rect((12, 22, 14, 14)), (10, 20, 18))
+        self.assertEqual(icon_view_rect((0, 0, 24, 24)), (0, 0, 24))      # interface maior
