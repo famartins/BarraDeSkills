@@ -313,6 +313,7 @@ class BuffTracker:
 
     def __init__(self, hold=1.0, flicker=4.0):
         self.hold = hold
+        self.end_hold = 0.25
         self.flicker = flicker
         self.s = {}
 
@@ -367,9 +368,17 @@ class BuffTracker:
         st = self.s.get(key)
         return st["since"] if st else None
 
-    def active(self, key, now):
+    def active(self, key, now, duration=0.0):
+        """Visto ha no maximo `hold` s. Perto do fim da contagem (ultimo 1 s ou
+        depois) a folga cai para `end_hold`: o icone saiu do jogo porque o buff
+        acabou, entao some na hora, sem atraso."""
         st = self.s.get(key)
-        return bool(st and st["last"] is not None and (now - st["last"]) <= self.hold)
+        if not st or st["last"] is None:
+            return False
+        hold = self.hold
+        if duration and st["since"] is not None and now - st["since"] >= duration - 1.0:
+            hold = self.end_hold
+        return (now - st["last"]) <= hold
 
     def elapsed(self, key, now):
         st = self.s.get(key)

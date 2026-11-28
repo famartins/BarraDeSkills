@@ -297,3 +297,19 @@ class IconeInteiroTest(unittest.TestCase):
         self.assertEqual(icon_view_rect((10, 20, 18, 18)), (10, 20, 18))
         self.assertEqual(icon_view_rect((12, 22, 14, 14)), (10, 20, 18))
         self.assertEqual(icon_view_rect((0, 0, 24, 24)), (0, 0, 24))      # interface maior
+
+
+class SomeNaHoraNoFimTest(unittest.TestCase):
+    def test_no_fim_da_contagem_some_sem_a_folga(self):
+        t = BuffTracker()
+        for s in range(0, 91):
+            t.update("ira", True, float(s))
+        # icone saiu do jogo em 90 s: meio segundo depois ja nao aparece
+        self.assertFalse(t.active("ira", 90.5, 90.0))
+        self.assertTrue(t.active("ira", 90.5, 0.0))      # duracao desconhecida: folga normal
+
+    def test_no_meio_do_buff_a_folga_continua(self):
+        t = BuffTracker()
+        for s in range(0, 31):
+            t.update("ira", True, float(s))
+        self.assertTrue(t.active("ira", 30.8, 90.0))     # tooltip cobriu o icone um instante

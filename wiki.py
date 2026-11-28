@@ -32,7 +32,7 @@ DATA_PATH = os.path.join(RES_DIR, "dados", "vocacoes.json")
 CACHE_DIR = os.path.join(BASE_DIR, "cache", "icones")
 ART_DIR = os.path.join(BASE_DIR, "cache", "personagens")
 CANAIS = ("Red", "Green", "Blue", "Yellow", "Magenta", "Cyan")
-USER_AGENT = "BarraDeSkills/0.10.3"
+USER_AGENT = "BarraDeSkills/0.10.4"
 
 
 def load_vocacoes():

@@ -903,7 +903,7 @@ class SkillBar:
             if self.tracker.update(b["file"], found, now, b["duration"]) == "novo":
                 log_error("Buff %s: apareceu, contagem de %g s iniciada"
                           % (b["name"], b["duration"]))
-            if self.tracker.active(b["file"], now):
+            if self.tracker.active(b["file"], now, b["duration"]):
                 self.check_renewal(b, now)
                 active.append(b)
             elif b["file"] in self.prev_active:
