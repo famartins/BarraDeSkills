@@ -243,8 +243,7 @@ class AprenderDuracaoTest(unittest.TestCase):
         self.assertAlmostEqual(t.measure("a"), 60.0)
         t2 = BuffTracker()
         t2.update("a", True, 0.0)
-        t2.suspend()                                  # saiu do jogo no meio
-        t2.update("a", True, 30.0)
+        t2.suspend(0.5)               # saiu do jogo e o buff acabou la fora
         self.assertIsNone(t2.measure("a"))
 
 
@@ -272,15 +271,20 @@ class RecorteDoIconeTest(unittest.TestCase):
 
 
 class MedidaDepoisDeSairDoJogoTest(unittest.TestCase):
-    def test_sair_do_jogo_sem_buff_ativo_nao_estraga_a_medida(self):
+    def test_sair_do_jogo_um_instante_nao_estraga_a_medida(self):
         t = BuffTracker()
         for s in range(0, 21):
             t.update("ira", True, float(s))
-        t.suspend(20.5)                 # configuracoes abertas: buff ativo, medida perdida
-        t.update("ira", True, 25.0)
-        self.assertIsNone(t.measure("ira"))
-        t.suspend(60.0)                 # buff ja tinha acabado: nao muda nada
-        t.restart("ira", 100.0)         # usou a skill de novo: contagem nova
-        for s in range(100, 192):
+        t.suspend(20.5)                 # print da tela: jogo fora de foco um instante
+        for s in range(22, 91):         # viu o buff de novo e ele acabou na frente
             t.update("ira", True, float(s))
-        self.assertAlmostEqual(t.measure("ira"), 91.0)
+        self.assertAlmostEqual(t.measure("ira"), 90.0)
+
+    def test_buff_que_volta_muito_depois_e_contagem_nova(self):
+        t = BuffTracker()
+        t.update("ira", True, 0.0)
+        t.suspend(0.5)                  # acabou com o jogo fora de foco
+        self.assertEqual(t.update("ira", True, 300.0), "novo")   # usou de novo
+        for s in range(301, 391):
+            t.update("ira", True, float(s))
+        self.assertAlmostEqual(t.measure("ira"), 90.0)

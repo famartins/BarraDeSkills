@@ -286,19 +286,19 @@ class BuffTracker:
 
     def suspend(self, now=None):
         """Nao da para ver os buffs (jogo fora de foco). So os ativos agora sao
-        afetados: o cronometro deles continua na volta, mas a medida da duracao
-        deixa de valer (nao deu para ver o buff o tempo todo)."""
+        afetados ("congelados"): o cronometro deles continua na volta. Se o buff
+        acabar sem ser visto de novo, nao da para saber quando acabou."""
         for st in self.s.values():
             if now is not None and (st["last"] is None or now - st["last"] > self.hold):
                 continue
             st["frozen"] = True
-            st["clean"] = False
 
     def measure(self, key):
-        """Quanto o buff durou (do inicio da contagem ate a ultima vez que foi visto),
-        se ele foi visto o tempo todo. Senao None. Serve para aprender a duracao."""
+        """Quanto o buff durou (do inicio da contagem ate a ultima vez que foi visto).
+        None se ele acabou enquanto o jogo estava fora de foco (congelado): ai nao da
+        para saber quando acabou. Serve para aprender a duracao."""
         st = self.s.get(key)
-        if not st or st["since"] is None or st["last"] is None or not st.get("clean"):
+        if not st or st["since"] is None or st["last"] is None or st["frozen"]:
             return None
         return st["last"] - st["since"]
 
@@ -311,14 +311,15 @@ class BuffTracker:
         was_active = st["last"] is not None and (now - st["last"]) <= self.hold
         if st["since"] is None:
             st["since"] = now
-            st["clean"] = True
             event = "novo"
         elif not was_active:
-            still_running = (not duration) or (now - st["since"]) < duration + 1.0
+            if duration:
+                still_running = (now - st["since"]) < duration + 1.0
+            else:   # duracao ainda nao conhecida: so continua se voltou logo
+                still_running = (now - st["last"]) <= 30.0
             short_gap = (now - st["last"]) <= self.flicker
             if not (still_running and (st["frozen"] or short_gap)):
                 st["since"] = now  # sumiu de verdade e voltou: foi usado de novo
-                st["clean"] = True
                 event = "novo"
         st["last"] = now
         st["frozen"] = False
@@ -329,7 +330,6 @@ class BuffTracker:
         st = self.s.get(key)
         if st is not None and st["since"] is not None:
             st["since"] = now
-            st["clean"] = True      # contagem nova: a medida volta a valer
 
     def since(self, key):
         st = self.s.get(key)

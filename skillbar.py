@@ -878,7 +878,11 @@ class SkillBar:
     def learn_from(self, b):
         """O buff acabou sozinho: guarda quanto durou e recalcula a duracao."""
         took = self.tracker.measure(b["file"])
-        if took is None or not 0 <= b["ci"] < len(self.cfg["buffs"]):
+        if took is None:
+            log_error("Buff %s: medida descartada (acabou com o jogo fora de foco)"
+                      % b["name"])
+            return
+        if not 0 <= b["ci"] < len(self.cfg["buffs"]):
             return
         entry = self.cfg["buffs"][b["ci"]]
         samples = (list(entry.get("samples") or []) + [round(took, 1)])[-10:]
@@ -886,8 +890,8 @@ class SkillBar:
         new = learn_duration(samples)
         if new and new != entry.get("duration"):
             entry["duration"] = b["duration"] = float(new)
-            log_error("Buff %s: durou %.0f s; duracao aprendida: %d s (medidas: %s)"
-                      % (b["name"], took, new, samples))
+        log_error("Buff %s: durou %.0f s; duracao aprendida: %s (medidas: %s)"
+                  % (b["name"], took, ("%d s" % new) if new else "ainda nao", samples))
         save_config(self.cfg)
         self.refresh_settings()
 
