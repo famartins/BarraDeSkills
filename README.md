@@ -92,14 +92,17 @@ personagem** (lista dos salvos), criar, renomear, apagar e **Trocar vocação/ma
 
 Faça uma vez para cada buff:
 
-1. Use a skill para o buff ficar **ativo** e aperte **Ctrl+Alt+F12**.
-2. Na primeira vez, marque a **área dos buffs**: um retângulo cobrindo **todas as linhas**
-   onde eles podem aparecer (ao lado do nível do personagem). Com muitos buffs, a fila
-   quebra para a 2ª linha.
-3. Arraste um retângulo **justo** sobre o ícone do buff.
-4. **Clique na skill** que dá esse buff e informe a **duração real** do buff, em segundos.
-   A wiki mostra o tempo de recarga da skill, não a duração do buff. O nome vem
-   sugerido. Salve.
+1. Use a skill para o buff ficar **ativo** e aperte **Ctrl+Alt+F12** (ou **+ Adicionar
+   buff** na aba Buffs).
+2. **Clique no meio do ícone** do buff. O programa acha o quadrado do ícone sozinho. Se
+   ele errar, arraste um retângulo justo sobre o ícone, como antes. Na primeira vez, a
+   área de busca dos buffs é montada em volta desse ícone (dá para redefinir depois).
+3. **Clique na skill** que dá esse buff. O buff leva o nome dela. Salve.
+
+A **duração** é opcional. Deixando vazio, o programa mede sozinho: na primeira vez que o
+buff acabar no jogo, ele guarda quanto durou. Ele continua medindo e, se uma vez o buff
+sumir antes da hora (morte, por exemplo), vale o tempo que mais se repete. Quem quiser
+pode digitar a duração em **Editar**.
 
 O buff aparece junto da skill enquanto estiver ativo. Passe o mouse para ver o tempo
 restante.
@@ -323,6 +326,7 @@ BarraDeSkills.exe (ou python skillbar.py)    inicia
 | `bars` | Até 2 barras: `{regions, magias, orientation, pos}` |
 | `buffs` | `{name, duration, desc, file, skill, skill_slug, restart_on_cast}`. `skill` é o índice **global** da skill (barra 1, depois barra 2) ou `null`. `skill_slug` mantém o vínculo se a ordem mudar |
 | `only_buffs` | Esconde as barras e mostra só os buffs |
+| `buffs[].learn`, `buffs[].samples` | Duração aprendida pelo programa e as medidas usadas |
 | `buff_vertical` | Janelinha de buffs em coluna (um ícone embaixo do outro) |
 
 O programa ativa *DPI awareness* por monitor, então as coordenadas são pixels reais

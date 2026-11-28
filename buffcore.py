@@ -63,6 +63,53 @@ def expand_buff_area(area, iw, ih, screen):
     return x0, y0, max(0, x1 - x0), max(0, y1 - y0)
 
 
+def snap_icon(img, cx, cy, min_size=12, max_size=26, max_ratio=1.35):
+    """Acha o quadrado do icone em volta de um clique em (cx, cy).
+
+    Os icones de buff sao pequenos (~16 px) e recortar na mao sai torto. Aqui o
+    programa testa todos os retangulos de `min_size` a `max_size` px que contem o
+    clique e fica com o que tem as quatro bordas mais marcadas (troca brusca de cor
+    entre dentro e fora). Usa a MAIS FRACA das quatro bordas como nota, para um
+    traco forte no meio do desenho nao ganhar de uma moldura inteira.
+    `img` = array HxWx3 (RGB). Retorna (x, y, w, h) ou None."""
+    full = np.asarray(img)
+    if not (0 <= cx < full.shape[1] and 0 <= cy < full.shape[0]):
+        return None
+    # so um pedaco em volta do clique (a imagem pode ser a tela inteira)
+    ox, oy = max(0, cx - max_size - 2), max(0, cy - max_size - 2)
+    a = full[oy:cy + max_size + 3, ox:cx + max_size + 3].astype(np.int32)
+    cx, cy = cx - ox, cy - oy
+    H, W = a.shape[:2]
+    # gx[y, x]: diferenca entre os pixels x-1 e x; gy[y, x]: entre y-1 e y
+    gx = np.zeros((H, W + 1))
+    gx[:, 1:W] = np.abs(np.diff(a, axis=1)).sum(axis=2)
+    gy = np.zeros((H + 1, W))
+    gy[1:H, :] = np.abs(np.diff(a, axis=0)).sum(axis=2)
+    cgx = np.vstack([np.zeros((1, W + 1)), np.cumsum(gx, axis=0)])   # soma por coluna
+    cgy = np.hstack([np.zeros((H + 1, 1)), np.cumsum(gy, axis=1)])   # soma por linha
+    best = None
+    for h in range(min_size, max_size + 1):
+        for w in range(min_size, max_size + 1):
+            if max(w, h) > max_ratio * min(w, h):
+                continue
+            x0s = np.arange(max(1, cx - w + 1), min(cx, W - w - 1) + 1)
+            y0s = np.arange(max(1, cy - h + 1), min(cy, H - h - 1) + 1)
+            if not len(x0s) or not len(y0s):
+                continue
+            X, Y = np.meshgrid(x0s, y0s)
+            left = (cgx[Y + h, X] - cgx[Y, X]) / h
+            right = (cgx[Y + h, X + w] - cgx[Y, X + w]) / h
+            top = (cgy[Y, X + w] - cgy[Y, X]) / w
+            bottom = (cgy[Y + h, X + w] - cgy[Y + h, X]) / w
+            score = np.minimum(np.minimum(left, right), np.minimum(top, bottom))
+            i = np.unravel_index(int(np.argmax(score)), score.shape)
+            if best is None or score[i] > best[0]:
+                best = (float(score[i]), int(X[i]), int(Y[i]), w, h)
+    if best is None or best[0] < 30:      # nada com borda: clicou fora de um icone
+        return None
+    return best[1] + ox, best[2] + oy, best[3], best[4]
+
+
 class CastDetector:
     """Percebe quando uma skill escurece, olhando o brilho medio do icone dela.
 
@@ -184,6 +231,28 @@ def renewal_time(since, duration, now, last_drop=None, grace=2.0):
     return since + duration
 
 
+def learn_duration(samples, tol=3.0, minimum=3.0):
+    """Duracao do buff a partir das vezes em que ele acabou sozinho (segundos).
+
+    As medidas parecidas (ate `tol` s de diferenca) formam um grupo; vale o grupo com
+    mais medidas e, no empate, o de tempo maior. Assim uma vez que o buff sumiu antes
+    da hora (morte) ou durou o dobro (reuso que o programa nao viu) nao estraga o
+    valor depois que houver outras medidas. Retorna segundos inteiros ou 0."""
+    vals = sorted(float(v) for v in samples if v and float(v) >= minimum)
+    if not vals:
+        return 0
+    best = None
+    for v in vals:
+        group = [u for u in vals if abs(u - v) <= tol]
+        key = (len(group), max(group))
+        if best is None or key > best[0]:
+            best = (key, group)
+    group = best[1]
+    mid = len(group) // 2
+    median = group[mid] if len(group) % 2 else (group[mid - 1] + group[mid]) / 2
+    return int(round(median))
+
+
 def fmt_time(seconds):
     s = max(0, int(seconds))
     return "%dm %ds" % (s // 60, s % 60)
@@ -218,6 +287,15 @@ class BuffTracker:
     def suspend(self):
         for st in self.s.values():
             st["frozen"] = True
+            st["clean"] = False     # nao deu para ver o buff o tempo todo
+
+    def measure(self, key):
+        """Quanto o buff durou (do inicio da contagem ate a ultima vez que foi visto),
+        se ele foi visto o tempo todo. Senao None. Serve para aprender a duracao."""
+        st = self.s.get(key)
+        if not st or st["since"] is None or st["last"] is None or not st.get("clean"):
+            return None
+        return st["last"] - st["since"]
 
     def update(self, key, found, now, duration=0.0):
         """Retorna "novo" quando o cronometro (re)comecou neste quadro, senao None."""
@@ -228,12 +306,14 @@ class BuffTracker:
         was_active = st["last"] is not None and (now - st["last"]) <= self.hold
         if st["since"] is None:
             st["since"] = now
+            st["clean"] = True
             event = "novo"
         elif not was_active:
             still_running = (not duration) or (now - st["since"]) < duration + 1.0
             short_gap = (now - st["last"]) <= self.flicker
             if not (still_running and (st["frozen"] or short_gap)):
                 st["since"] = now  # sumiu de verdade e voltou: foi usado de novo
+                st["clean"] = True
                 event = "novo"
         st["last"] = now
         st["frozen"] = False

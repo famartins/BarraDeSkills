@@ -5,7 +5,7 @@ Telas do programa (CustomTkinter, tema escuro):
 - Assistente: personagem -> vocacao -> magias (barra 1 e 2, orientacao, so
   buffs) -> localizacao automatica e confirmacao -> pronto.
 - Configuracoes: abas Personagem, Barras, Buffs, Jogo e Sobre.
-- Editor de buff: nome, duracao, skill e reinicio ao usar a skill.
+- Editor de buff: skill (da o nome), duracao opcional (aprendida) e reinicio.
 
 As janelas que ficam por cima do jogo (barras e buffs) continuam em Tk puro no
 overlay.py, porque precisam de estilos especiais do Windows.
@@ -25,7 +25,7 @@ import sistema
 import tema
 import wiki
 
-VERSION = "0.9.2"
+VERSION = "0.10"
 REPO_URL = "https://github.com/famartins/BarraDeSkills"
 ICON_PATH = os.path.join(config.RES_DIR, "dados", "icone.ico")
 
@@ -1008,8 +1008,8 @@ class Wizard(Window):
                 if self.only_buffs else
                 "• As barras já estão na tela. Arraste cada uma com o botão esquerdo.\n"
                 "• Roda do mouse sobre a barra: zoom.   Botão direito: configurações.\n")
-        tips += ("• Buffs (Ira, Vampirismo...): com o buff ativo no jogo, aperte Ctrl+Alt+F12.\n"
-                 "  Na primeira vez, marque a área onde os buffs aparecem (todas as linhas).")
+        tips += ("• Buffs (Ira, Vampirismo...): com o buff ativo no jogo, aperte Ctrl+Alt+F12,\n"
+                 "  clique no ícone dele e escolha a skill. O tempo ele aprende sozinho.")
         ctk.CTkLabel(box, justify="left", font=F(14), text_color=DIM, text=tips
                      ).pack(padx=24, pady=8)
         sc = ctk.CTkFrame(box, fg_color="transparent")
@@ -1025,33 +1025,41 @@ class Wizard(Window):
 # Editor de buff
 # --------------------------------------------------------------------------
 class BuffEditor(Window):
-    """Modal. run() devolve {name, duration, desc, skill, restart_on_cast} ou None."""
+    """Modal. run() devolve {name, duration, learn, desc, skill, restart_on_cast},
+    "retry" (recortar o icone de novo) ou None.
+
+    Nao pede nome: o buff leva o nome da skill escolhida. A duracao e opcional:
+    vazia, o programa mede sozinho quando o buff acabar (learn=True)."""
 
     def __init__(self, app, icon, buff=None):
-        super().__init__(app, "Buff", (580, 560))
+        super().__init__(app, "Buff", (600, 500))
         self.result = None
+        self.buff = buff or {}
         self.slots = app.skill_slots()      # [(nome, imagem PIL, magia_ou_None)]
         frm = ctk.CTkFrame(self, fg_color="transparent")
         frm.pack(fill="both", expand=True, padx=22, pady=18)
 
         top = ctk.CTkFrame(frm, fg_color="transparent")
         top.pack(fill="x")
-        ctk.CTkLabel(top, text="", image=cimg(icon, (icon.width * 4, icon.height * 4))
+        scale = max(3, 64 // max(1, max(icon.size)))
+        ctk.CTkLabel(top, text="", image=cimg(icon, (icon.width * scale, icon.height * scale))
                      ).pack(side="left", padx=(0, 16))
-        fields = ctk.CTkFrame(top, fg_color="transparent")
-        fields.pack(side="left", fill="x", expand=True)
-        self.name = self._entry(fields, "Nome")
-        self.dur = self._entry(fields, "Duração do buff em segundos (0 = sem contagem)")
-        self.desc = self._entry(fields, "Descrição (opcional)")
+        head = ctk.CTkFrame(top, fg_color="transparent")
+        head.pack(side="left", fill="x", expand=True)
+        ctk.CTkLabel(head, text="De qual skill é esse buff?", font=F(16, "bold"),
+                     text_color=TEXT, anchor="w").pack(fill="x")
+        ctk.CTkLabel(head, text="O buff aparece junto dela e leva o nome dela.",
+                     font=F(12), text_color=DIM, anchor="w").pack(fill="x")
+        if not buff:
+            ghost_button(head, "Recortar o ícone de novo", self.retry, width=190,
+                         height=28).pack(anchor="w", pady=(6, 0))
 
-        ctk.CTkLabel(frm, text="Mostrar junto de qual skill?", font=F(13, "bold"),
-                     text_color=TEXT, anchor="w").pack(fill="x", pady=(16, 4))
-        cur = buff.get("skill") if buff else None
+        cur = self.buff.get("skill")
         self.skill = ctk.IntVar(value=cur if isinstance(cur, int)
                                 and 0 <= cur < len(self.slots) else -1)
         grid = ctk.CTkScrollableFrame(frm, fg_color=CARD, corner_radius=10, height=150,
                                       orientation="horizontal")
-        grid.pack(fill="x")
+        grid.pack(fill="x", pady=(14, 0))
         self.skill_btns = []
         none = ctk.CTkButton(grid, text="Nenhuma\n(janelinha)", width=90, height=86,
                              font=F(11), command=lambda: self.pick_skill(-1))
@@ -1068,8 +1076,27 @@ class BuffEditor(Window):
             frm, text="Reiniciar o tempo quando eu usar a skill de novo",
             font=F(12), progress_color=PRIMARY)
         self.restart.pack(anchor="w", pady=(14, 0))
-        if not buff or buff.get("restart_on_cast", True):
+        if self.buff.get("restart_on_cast", True):
             self.restart.select()
+
+        row = ctk.CTkFrame(frm, fg_color="transparent")
+        row.pack(fill="x", pady=(14, 0))
+        ctk.CTkLabel(row, text="Duração (segundos):", font=F(12), text_color=TEXT
+                     ).pack(side="left")
+        self.dur = ctk.CTkEntry(row, font=F(13), height=30, width=150,
+                                placeholder_text="aprender sozinho")
+        self.dur.pack(side="left", padx=8)
+        learning = buff is None or buff.get("learn", False)
+        if buff and not learning:
+            self.dur.insert(0, "%g" % buff.get("duration", 0))
+        if learning and self.buff.get("duration"):
+            hint = "Medido até agora: %g s. Deixe vazio para continuar medindo." \
+                %  self.buff["duration"]
+        else:
+            hint = ("Deixe vazio: o programa mede sozinho na primeira vez que o buff "
+                    "acabar no jogo.")
+        ctk.CTkLabel(frm, text=hint, font=F(11), text_color=DIM, anchor="w", justify="left",
+                     wraplength=540).pack(fill="x", pady=(4, 0))
 
         self.err = ctk.CTkLabel(frm, text="", text_color=ERR, font=F(12))
         self.err.pack(anchor="w", pady=(6, 0))
@@ -1078,44 +1105,42 @@ class BuffEditor(Window):
         accent_button(foot, "Salvar", self.save, width=120).pack(side="right")
         ghost_button(foot, "Cancelar", self.destroy, width=100).pack(side="right", padx=8)
 
-        if buff:
-            self.name.insert(0, buff.get("name", ""))
-            self.dur.insert(0, "%g" % buff.get("duration", 0))
-            self.desc.insert(0, buff.get("desc", ""))
-        self.pick_skill(self.skill.get(), fill=not buff)
+        self.pick_skill(self.skill.get())
         self.bind("<Return>", lambda e: self.save())
         self.bind("<Escape>", lambda e: self.destroy())
 
-    def _entry(self, parent, label):
-        ctk.CTkLabel(parent, text=label, font=F(12), text_color=DIM, anchor="w"
-                     ).pack(fill="x")
-        e = ctk.CTkEntry(parent, font=F(13), height=32)
-        e.pack(fill="x", pady=(0, 6))
-        return e
+    def retry(self):
+        self.result = "retry"
+        self.destroy()
 
-    def pick_skill(self, idx, fill=True):
+    def pick_skill(self, idx):
         self.skill.set(idx)
         for i, b in self.skill_btns:
             b.configure(fg_color=ACCENT if i == idx else CARD_HOVER,
                         hover_color=ACCENT_HOVER if i == idx else BORDER,
                         text_color=ON_ACCENT if i == idx else TEXT)
-        if fill and idx >= 0 and self.slots[idx][2] is not None \
-                and not self.name.get().strip():
-            self.name.insert(0, self.slots[idx][2]["nome"])
 
     def save(self):
         text = self.dur.get().replace(",", ".").strip()
-        try:
-            duration = float(text)
-            if duration < 0:
-                raise ValueError
-        except ValueError:
-            self.err.configure(text="Informe a duração do buff em segundos (ex.: 90). "
-                                    "A wiki mostra a recarga, não a duração.")
-            return
+        learn = not text
+        duration = float(self.buff.get("duration", 0) or 0) if learn else None
+        if not learn:
+            try:
+                duration = float(text)
+                if duration < 0:
+                    raise ValueError
+            except ValueError:
+                self.err.configure(text="Duração em segundos (ex.: 90), ou deixe vazio para "
+                                        "o programa medir sozinho.")
+                return
         idx = self.skill.get()
-        self.result = {"name": self.name.get().strip() or "Buff", "duration": duration,
-                       "desc": self.desc.get().strip(),
+        if 0 <= idx < len(self.slots):
+            m = self.slots[idx][2]
+            name = m["nome"] if m else self.slots[idx][0]
+        else:
+            name = self.buff.get("name") or "Buff"
+        self.result = {"name": name, "duration": duration, "learn": learn,
+                       "desc": self.buff.get("desc", ""),
                        "skill": idx if idx >= 0 else None,
                        "restart_on_cast": bool(self.restart.get())}
         self.destroy()
@@ -1320,9 +1345,9 @@ class Settings(Window):
     def build_buffs(self, tab):
         ctk.CTkLabel(tab, justify="left", anchor="w", font=F(12), text_color=DIM,
                      wraplength=560, text=(
-                         "Com o buff ATIVO no jogo, aperte Ctrl+Alt+F12 (ou o botão abaixo) "
-                         "para cadastrar. Ele aparece junto da skill escolhida enquanto "
-                         "estiver ativo; passe o mouse para ver o tempo.")).pack(fill="x")
+                         "Com o buff ATIVO no jogo, aperte Ctrl+Alt+F12 (ou o botão abaixo), "
+                         "clique no ícone dele e escolha a skill. O tempo o programa aprende "
+                         "sozinho. Passe o mouse no buff para ver quanto falta.")).pack(fill="x")
         self.buff_rows = ctk.CTkScrollableFrame(tab, fg_color="transparent", height=150)
         self.buff_rows.pack(fill="both", expand=True, pady=8)
         accent_button(tab, "+ Adicionar buff", self.app.add_buff).pack(fill="x")
@@ -1371,7 +1396,10 @@ class Settings(Window):
             s = b.get("skill")
             where = ("junto de %s" % names[s]) if isinstance(s, int) and s < len(names) \
                 else "janelinha"
-            dur = ("%g s" % b["duration"]) if b["duration"] else "sem contagem"
+            if b.get("learn"):
+                dur = ("%g s (medido)" % b["duration"]) if b["duration"]                     else "aprendendo o tempo"
+            else:
+                dur = ("%g s" % b["duration"]) if b["duration"] else "sem contagem"
             box = ctk.CTkFrame(row, fg_color="transparent")
             box.pack(side="left", fill="x", expand=True)
             ctk.CTkLabel(box, text=b["name"], font=F(13, "bold"), text_color=TEXT,

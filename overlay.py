@@ -11,6 +11,7 @@ import tkinter as tk
 from ctypes import wintypes
 
 import mss
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
 import tema
@@ -169,10 +170,14 @@ def grab_image(sct, box):
 # Calibracao: tela congelada onde voce marca os icones
 # --------------------------------------------------------------------------
 class Calibrator:
-    def __init__(self, root, monitor_index, message=None, single=False, click_size=None):
+    def __init__(self, root, monitor_index, message=None, single=False, click_size=None,
+                 snap=None):
         self.root = root
         self.single = single      # True = marca um unico retangulo
         self.click_size = click_size  # (w, h): no modo single, um clique marca esse tamanho
+        # snap(imagem_array, x, y) -> (x, y, w, h) ou None: no modo single, um clique
+        # acha sozinho o retangulo em volta (icone de buff) e ja conclui
+        self.snap = snap
         self.message = message
         with mss.mss() as sct:
             mons = sct.monitors
@@ -274,6 +279,16 @@ class Calibrator:
             if self.single:
                 self.rects = []
             self.rects.append((x0, y0, w, h))
+        elif self.single and self.snap:
+            found = self.snap(np.asarray(self.base), e.x, e.y)
+            if not found:
+                self.status.config(text="nao achei um icone ai: clique no MEIO do icone "
+                                        "ou arraste um retangulo")
+                return
+            self.rects = [tuple(found)]
+            self.redraw()
+            self.top.after(250, self.finish)     # mostra o quadrado por um instante
+            return
         elif self.single and self.click_size:
             w, h = self.click_size
             x = max(0, min(self.width - w, e.x - w // 2))
@@ -702,8 +717,10 @@ class BuffWindow:
         x0, _x1, b = self.slots[self.hover]
         self._ensure_tip()
         self.tip_name.config(text=b["name"])
-        self.tip_time.config(text=buff_time_text(
-            self.app.tracker.elapsed(b["file"], now), b["duration"]))
+        text = buff_time_text(self.app.tracker.elapsed(b["file"], now), b["duration"])
+        if b.get("learn") and not b["duration"]:
+            text += "  (aprendendo a duração)"
+        self.tip_time.config(text=text)
         self.tip_desc.pack_forget()
         if b["desc"]:
             self.tip_desc.config(text=b["desc"])

@@ -98,6 +98,7 @@ try:
     import telas
     import wiki
     from buffcore import (BuffTracker, CastDetector, confirm_casts, expand_buff_area,
+                          learn_duration, snap_icon,
                           find_template, renewal_time)
     from overlay import (BROWSERS, Bar, BuffWindow, Calibrator, enable_dpi_awareness,
                          grab_image, key_down, list_windows, user32, window_info,
@@ -820,6 +821,7 @@ class SkillBar:
                 "desc": b.get("desc", ""),
                 "skill": b.get("skill"),
                 "restart_on_cast": b.get("restart_on_cast", True),
+                "learn": bool(b.get("learn", False)),   # duracao medida pelo programa
                 "file": b["file"],
                 "img": img,
                 "arr": np.asarray(img),
@@ -867,9 +869,27 @@ class SkillBar:
                 log_error("Buff %s: sumiu depois de %.0f s (duracao configurada: %g s)"
                           % (b["name"], self.tracker.elapsed(b["file"], now) or 0,
                              b["duration"]))
+                if b["learn"]:
+                    self.learn_from(b)
         self.prev_active = {b["file"] for b in active}
         self.warn_sound(active, now)
         self.show_buffs(active, now)
+
+    def learn_from(self, b):
+        """O buff acabou sozinho: guarda quanto durou e recalcula a duracao."""
+        took = self.tracker.measure(b["file"])
+        if took is None or not 0 <= b["ci"] < len(self.cfg["buffs"]):
+            return
+        entry = self.cfg["buffs"][b["ci"]]
+        samples = (list(entry.get("samples") or []) + [round(took, 1)])[-10:]
+        entry["samples"] = samples
+        new = learn_duration(samples)
+        if new and new != entry.get("duration"):
+            entry["duration"] = b["duration"] = float(new)
+            log_error("Buff %s: durou %.0f s; duracao aprendida: %d s (medidas: %s)"
+                      % (b["name"], took, new, samples))
+        save_config(self.cfg)
+        self.refresh_settings()
 
     def check_renewal(self, b, now):
         """Buff ainda no jogo depois do fim da contagem: foi renovado sem o programa
@@ -956,7 +976,7 @@ class SkillBar:
         """Janelas de configuracao/assistente abertas."""
         return [w for w in (self.settings, self.wizard) if alive(w)]
 
-    def pick_rect(self, message, click_size=None):
+    def pick_rect(self, message, click_size=None, snap=None):
         """Congela a tela e deixa marcar um retangulo (ou so clicar, com click_size).
         Retorna (retangulo_na_tela, recorte_da_imagem) ou (None, None)."""
         self.paused = True
@@ -971,7 +991,7 @@ class SkillBar:
             self.root.update()
             time.sleep(0.35)
             cal = Calibrator(self.root, self.cfg["monitor"], message=message, single=True,
-                             click_size=click_size)
+                             click_size=click_size, snap=snap)
             result = cal.run()
             if result:
                 x, y, w, h = cal.rects[0]
@@ -1004,20 +1024,40 @@ class SkillBar:
         return False
 
     def add_buff(self):
+        """Cadastro: clicar no icone do buff na tela congelada (o programa acha o
+        quadrado sozinho; arrastar um retangulo, como antes, tambem vale) e escolher
+        de qual skill ele e. A duracao e aprendida sozinha se nao for informada."""
         if self.paused or not config.is_configured(self.cfg):
             return
-        two_steps = not self.cfg.get("buff_area")
-        if two_steps and not self.define_buff_area("(1/2) - deixe o buff ATIVO no jogo"):
-            return
-        _rect, icon = self.pick_rect(
-            "ADICIONAR BUFF %s\n"
-            "Com o buff ATIVO na tela, arraste um retangulo bem justo sobre o ICONE dele.\n"
-            "Enter: confirmar.   Esc: cancelar." % ("(2/2)" if two_steps else ""))
-        if icon is None:
-            return
-        data = telas.BuffEditor(self, icon).run()
-        if not data:
-            return
+        while True:
+            snapped = []
+
+            def snap(arr, x, y):
+                found = snap_icon(arr, x, y)
+                if found:
+                    snapped.append(tuple(found))
+                return found
+            rect, icon = self.pick_rect(
+                "ADICIONAR BUFF - deixe o buff ATIVO no jogo\n"
+                "CLIQUE no meio do icone do buff: o programa acha o quadrado sozinho.\n"
+                "Se ele errar, arraste um retangulo bem justo sobre o icone (jeito antigo).\n"
+                "Esc: cancelar.", snap=snap)
+            if icon is None:
+                return
+            if snapped and tuple(rect[2:]) == snapped[-1][2:]:
+                # so o miolo: a moldura e o fundo em volta variam no jogo
+                m = 2 if min(icon.size) >= 14 else 1
+                icon = icon.crop((m, m, icon.width - m, icon.height - m))
+            if not self.cfg.get("buff_area"):
+                # a busca amplia sozinha em volta (linha inteira e 3 linhas)
+                self.cfg["buff_area"] = list(rect)
+                save_config(self.cfg)
+            data = telas.BuffEditor(self, icon).run()
+            if data == "retry":
+                continue
+            if not data:
+                return
+            break
         folder = os.path.join(BASE_DIR, "buffs")
         os.makedirs(folder, exist_ok=True)
         slug = "".join(c if c.isalnum() else "_" for c in data["name"].lower()).strip("_") or "buff"

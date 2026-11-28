@@ -4,6 +4,8 @@ import os
 import sys
 import unittest
 
+import numpy as np
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from buffcore import (BuffTracker, CastDetector, confirm_casts,  # noqa: E402
@@ -222,3 +224,48 @@ class BuffTrackerRestartTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AprenderDuracaoTest(unittest.TestCase):
+    def test_vale_o_tempo_que_mais_se_repete(self):
+        from buffcore import learn_duration
+        self.assertEqual(learn_duration([]), 0)
+        self.assertEqual(learn_duration([90.4]), 90)
+        self.assertEqual(learn_duration([90.4, 31.0]), 90)        # morreu: some antes
+        self.assertEqual(learn_duration([31.0, 89.6, 90.8]), 90)
+        self.assertEqual(learn_duration([90, 180, 91, 89]), 90)    # reuso nao percebido
+        self.assertEqual(learn_duration([1.0, 2.0]), 0)            # piscadas nao contam
+
+    def test_mede_so_se_viu_o_buff_o_tempo_todo(self):
+        t = BuffTracker()
+        for s in range(0, 61):
+            t.update("a", True, float(s))
+        self.assertAlmostEqual(t.measure("a"), 60.0)
+        t2 = BuffTracker()
+        t2.update("a", True, 0.0)
+        t2.suspend()                                  # saiu do jogo no meio
+        t2.update("a", True, 30.0)
+        self.assertIsNone(t2.measure("a"))
+
+
+class RecorteDoIconeTest(unittest.TestCase):
+    def test_clique_acha_o_quadrado_do_icone(self):
+        from buffcore import snap_icon
+        rng = np.random.default_rng(0)
+        scene = np.full((60, 120, 3), 30, np.uint8)
+        x = 10
+        rects = []
+        for _ in range(5):
+            ic = np.kron(rng.integers(60, 255, (4, 4, 3)), np.ones((4, 4, 1)))
+            ic[0, :] = ic[-1, :] = ic[:, 0] = ic[:, -1] = 5      # moldura escura
+            scene[20:36, x:x + 16] = ic
+            rects.append((x, 20, 16, 16))
+            x += 18
+        for r in rects:
+            got = snap_icon(scene, r[0] + 7, r[1] + 8)
+            self.assertIsNotNone(got)
+            # o miolo usado (2 px para dentro) fica dentro do icone certo
+            gx, gy, gw, gh = got
+            self.assertTrue(r[0] <= gx + 2 and gx + gw - 2 <= r[0] + 16, (got, r))
+            self.assertTrue(r[1] <= gy + 2 and gy + gh - 2 <= r[1] + 16, (got, r))
+        self.assertIsNone(snap_icon(scene, 5, 50))           # fundo liso: nada
