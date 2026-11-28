@@ -284,10 +284,15 @@ class BuffTracker:
         self.flicker = flicker
         self.s = {}
 
-    def suspend(self):
+    def suspend(self, now=None):
+        """Nao da para ver os buffs (jogo fora de foco). So os ativos agora sao
+        afetados: o cronometro deles continua na volta, mas a medida da duracao
+        deixa de valer (nao deu para ver o buff o tempo todo)."""
         for st in self.s.values():
+            if now is not None and (st["last"] is None or now - st["last"] > self.hold):
+                continue
             st["frozen"] = True
-            st["clean"] = False     # nao deu para ver o buff o tempo todo
+            st["clean"] = False
 
     def measure(self, key):
         """Quanto o buff durou (do inicio da contagem ate a ultima vez que foi visto),
@@ -324,6 +329,7 @@ class BuffTracker:
         st = self.s.get(key)
         if st is not None and st["since"] is not None:
             st["since"] = now
+            st["clean"] = True      # contagem nova: a medida volta a valer
 
     def since(self, key):
         st = self.s.get(key)

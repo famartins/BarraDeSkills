@@ -848,7 +848,7 @@ class SkillBar:
         if not area or not self.buffs or not self.bar_visible:
             if area and self.buffs:
                 # jogo fora de foco: nao da para ver os icones; o cronometro segue valendo
-                self.tracker.suspend()
+                self.tracker.suspend(now)
             self.show_buffs([], now)
             return
         x, y, w, h = self.scan_area(area)

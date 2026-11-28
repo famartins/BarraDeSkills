@@ -269,3 +269,18 @@ class RecorteDoIconeTest(unittest.TestCase):
             self.assertTrue(r[0] <= gx + 2 and gx + gw - 2 <= r[0] + 16, (got, r))
             self.assertTrue(r[1] <= gy + 2 and gy + gh - 2 <= r[1] + 16, (got, r))
         self.assertIsNone(snap_icon(scene, 5, 50))           # fundo liso: nada
+
+
+class MedidaDepoisDeSairDoJogoTest(unittest.TestCase):
+    def test_sair_do_jogo_sem_buff_ativo_nao_estraga_a_medida(self):
+        t = BuffTracker()
+        for s in range(0, 21):
+            t.update("ira", True, float(s))
+        t.suspend(20.5)                 # configuracoes abertas: buff ativo, medida perdida
+        t.update("ira", True, 25.0)
+        self.assertIsNone(t.measure("ira"))
+        t.suspend(60.0)                 # buff ja tinha acabado: nao muda nada
+        t.restart("ira", 100.0)         # usou a skill de novo: contagem nova
+        for s in range(100, 192):
+            t.update("ira", True, float(s))
+        self.assertAlmostEqual(t.measure("ira"), 91.0)
